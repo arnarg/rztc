@@ -3,6 +3,10 @@ name = "zt"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+name = "zt"
+path = "src/lib.rs"
 
 [dependencies]
+zt-sys = { path = "zt-sys" }
+libc = "0.2"

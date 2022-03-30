@@ -121,7 +121,9 @@ fn main() {
         .include(source_dir.join("include"))
         .cpp_link_stdlib("stdc++")
         .warnings(false)
-        .flag("-O3")
+        .pic(true)
+        .opt_level(3)
+        .flag("-fstack-protector")
         .compile("libzerotierone.a");
 
     let bindings = builder()
@@ -129,6 +131,7 @@ fn main() {
         .allowlist_type("ZT_.*")
         .allowlist_function("ZT_.*")
         .allowlist_var("ZT_.*")
+        .clang_arg("--includestdbool.h")
         .generate()
         .expect("unable to generate bindings for zerotiercore");
 
