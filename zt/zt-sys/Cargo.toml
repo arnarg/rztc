@@ -1,0 +1,14 @@
+[package]
+name = "zt-sys"
+version = "0.1.0"
+edition = "2021"
+build = "build.rs"
+
+[lib]
+name = "zerotierone_sys"
+path = "src/lib.rs"
+
+[build-dependencies]
+cc = "1.0"
+bindgen = "0.59"
+

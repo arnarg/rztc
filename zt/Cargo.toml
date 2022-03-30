@@ -1,5 +1,5 @@
 [package]
-name = "zt-sys"
+name = "zt"
 version = "0.1.0"
 edition = "2021"
 
