@@ -12,14 +12,14 @@ pub mod core {
     use zt_sys::*;
 
     pub struct Node {
-        node: *const ZT_Node,
+        zt_node: *const ZT_Node,
         _identity: Identity,
     }
 
     impl Node {
         pub fn new() -> Node {
             let n = Self {
-                node: std::ptr::null(),
+                zt_node: std::ptr::null(),
                 _identity: Identity::new(),
             };
             let now = SystemTime::now().duration_since(UNIX_EPOCH).expect("unable to get time in millis");
@@ -36,10 +36,10 @@ pub mod core {
                 pathLookupFunction: None,
             };
             unsafe {
-                let mut zt_node: *mut ZT_Node = n.node as *mut ZT_Node;
+                let mut zt_node_ptr: *mut ZT_Node = n.zt_node as *mut ZT_Node;
                 let c_node: *const Node = &n;
                 let _ret = ZT_Node_new(
-                    &mut zt_node,
+                    &mut zt_node_ptr,
                     c_node as *mut c_void,
                     0 as *mut c_void,
                     &cbs,
@@ -65,7 +65,7 @@ pub mod core {
     impl Drop for Node {
         fn drop(&mut self) {
             unsafe {
-                ZT_Node_delete(self.node as *mut ZT_Node);
+                ZT_Node_delete(self.zt_node as *mut ZT_Node);
             }
         }
     }
