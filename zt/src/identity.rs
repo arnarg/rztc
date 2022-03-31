@@ -15,6 +15,7 @@ pub struct Identity {
 }
 
 impl Identity {
+    // Generate a new identity
     pub fn new() -> Result<Identity, ZTError> {
         let i = Self {
             zt_identity: Self::new_zt_identity()?,
@@ -33,6 +34,7 @@ impl Identity {
         Ok(i)
     }
 
+    // Load an identity from string
     pub fn from_string(identity: String) -> Result<Identity, ZTError> {
         let i = Self {
             zt_identity: Self::new_zt_identity()?,

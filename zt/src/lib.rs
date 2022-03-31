@@ -26,6 +26,7 @@ pub mod core {
     }
 
     impl Node {
+        // Create a new node
         pub fn new() -> Result<Node, ZTError> {
             let n = Self {
                 zt_node: std::ptr::null(),
