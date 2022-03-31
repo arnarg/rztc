@@ -7,19 +7,20 @@ pub mod core {
     use std::ffi::c_void;
     use std::os::raw::{c_int, c_uint};
     use std::time::{SystemTime, UNIX_EPOCH};
-    use std::option::Option;
+    use std::option::Option::Some;
+    use crate::identity::Identity;
     use zt_sys::*;
 
     pub struct Node {
         node: *const ZT_Node,
-        identity: crate::identity::Identity,
+        _identity: Identity,
     }
 
     impl Node {
         pub fn new() -> Node {
             let n = Self {
                 node: std::ptr::null(),
-                identity: crate::identity::Identity {},
+                _identity: Identity::new(),
             };
             let now = SystemTime::now().duration_since(UNIX_EPOCH).expect("unable to get time in millis");
             let now_millis = now.as_millis().try_into().unwrap();
@@ -37,7 +38,7 @@ pub mod core {
             unsafe {
                 let mut zt_node: *mut ZT_Node = n.node as *mut ZT_Node;
                 let c_node: *const Node = &n;
-                let ret = ZT_Node_new(
+                let _ret = ZT_Node_new(
                     &mut zt_node,
                     c_node as *mut c_void,
                     0 as *mut c_void,
@@ -73,97 +74,97 @@ pub mod core {
     // TODO: implement
     #[no_mangle]
     extern "C" fn state_put_function(
-        n: *mut ZT_Node,
-        node: *mut c_void,
-        tptr: *mut c_void,
-        object_type: ZT_StateObjectType,
-        id: *const u64,
-        data: *const c_void,
-        len: c_int
+        _n: *mut ZT_Node,
+        _node: *mut c_void,
+        _tptr: *mut c_void,
+        _object_type: ZT_StateObjectType,
+        _id: *const u64,
+        _data: *const c_void,
+        _len: c_int
     ) {}
 
     // TODO: implement
     #[no_mangle]
     extern "C" fn state_get_function(
-        n: *mut ZT_Node,
-        node: *mut c_void,
-        tptr: *mut c_void,
-        object_type: ZT_StateObjectType,
-        id: *const u64,
-        data: *mut c_void,
-        len: c_uint
+        _n: *mut ZT_Node,
+        _node: *mut c_void,
+        _tptr: *mut c_void,
+        _object_type: ZT_StateObjectType,
+        _id: *const u64,
+        _data: *mut c_void,
+        _len: c_uint
     ) -> c_int {0}
 
     // TODO: implement
     #[no_mangle]
     extern "C" fn wire_packet_send_function(
-        n: *mut ZT_Node,
-        node: *mut c_void,
-        tptr: *mut c_void,
-        socket: i64,
-        address: *const sockaddr_storage,
-        data: *const c_void,
-        len: c_uint,
-        ttl: c_uint
+        _n: *mut ZT_Node,
+        _node: *mut c_void,
+        _tptr: *mut c_void,
+        _socket: i64,
+        _address: *const sockaddr_storage,
+        _data: *const c_void,
+        _len: c_uint,
+        _ttl: c_uint
     ) -> c_int {0}
 
     // TODO: implement
     #[no_mangle]
     extern "C" fn event_callback(
-        n: *mut ZT_Node,
-        node: *mut c_void,
-        tptr: *mut c_void,
-        event_type: ZT_Event,
-        payload: *const c_void
+        _n: *mut ZT_Node,
+        _node: *mut c_void,
+        _tptr: *mut c_void,
+        _event_type: ZT_Event,
+        _payload: *const c_void
     ) {}
 
     // TODO: implement
     #[no_mangle]
     extern "C" fn virtual_network_config_function(
-        n: *mut ZT_Node,
-        node: *mut c_void,
-        tptr: *mut c_void,
-        nwid: u64,
-        user: *mut *mut c_void,
-        op: ZT_VirtualNetworkConfigOperation,
-        config: *const ZT_VirtualNetworkConfig
+        _n: *mut ZT_Node,
+        _node: *mut c_void,
+        _tptr: *mut c_void,
+        _nwid: u64,
+        _user: *mut *mut c_void,
+        _op: ZT_VirtualNetworkConfigOperation,
+        _config: *const ZT_VirtualNetworkConfig
     ) -> c_int {0}
 
     // TODO: implement
     #[no_mangle]
     extern "C" fn virtual_network_frame_function(
-        n: *mut ZT_Node,
-        node: *mut c_void,
-        tptr: *mut c_void,
-        nwid: u64,
-        user: *mut *mut c_void,
-        source: u64,
-        destination: u64,
-        ether_type: c_uint,
-        vlan_id: c_uint,
-        data: *const c_void,
-        len: c_uint
+        _n: *mut ZT_Node,
+        _node: *mut c_void,
+        _tptr: *mut c_void,
+        _nwid: u64,
+        _user: *mut *mut c_void,
+        _source: u64,
+        _destination: u64,
+        _ether_type: c_uint,
+        _vlan_id: c_uint,
+        _data: *const c_void,
+        _len: c_uint
     ) {}
 
     // TODO: implement
     #[no_mangle]
     extern "C" fn path_check_function(
-        n: *mut ZT_Node,
-        node: *mut c_void,
-        tptr: *mut c_void,
-        ztaddress: u64,
-        socket: c_int,
-        address: *const sockaddr_storage
+        _n: *mut ZT_Node,
+        _node: *mut c_void,
+        _tptr: *mut c_void,
+        _ztaddress: u64,
+        _socket: c_int,
+        _address: *const sockaddr_storage
     ) -> c_int {0}
 
     // TODO: implement
     #[no_mangle]
     extern "C" fn path_lookup_function(
-        n: *mut ZT_Node,
-        node: *mut c_void,
-        tptr: *mut c_void,
-        ztaddress: u64,
-        family: c_int,
-        address: *const sockaddr_storage
+        _n: *mut ZT_Node,
+        _node: *mut c_void,
+        _tptr: *mut c_void,
+        _ztaddress: u64,
+        _family: c_int,
+        _address: *const sockaddr_storage
     ) -> c_int {0}
 }

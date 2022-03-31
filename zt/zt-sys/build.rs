@@ -1,7 +1,7 @@
 extern crate cc;
 extern crate bindgen;
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::env;
 use std::vec;
 use bindgen::builder;
@@ -38,12 +38,14 @@ fn main() {
         "zerotierone/node/Topology.cpp",
         "zerotierone/node/Trace.cpp",
         "zerotierone/node/Utils.cpp",
-        "zerotierone/node/Bond.cpp"
+        "zerotierone/node/Bond.cpp",
+        // We also extend it and expose the Identity
+        // class on a C interface
+        "src/ZTIdentity.cpp",
     ];
 
     let target = env::var("TARGET").unwrap();
     let dst = PathBuf::from(env::var("OUT_DIR").unwrap());
-    let source_dir = Path::new("zerotierone");
 
     let mut cfg = cc::Build::new();
 
@@ -118,7 +120,7 @@ fn main() {
 
     cfg.files(files)
         .cpp(true)
-        .include(source_dir.join("include"))
+        .include("zerotierone/include")
         .cpp_link_stdlib("stdc++")
         .warnings(false)
         .pic(true)
@@ -128,6 +130,7 @@ fn main() {
 
     let bindings = builder()
         .header("zerotierone/include/ZeroTierOne.h")
+        .header("src/ZTIdentity.h")
         .allowlist_type("ZT_.*")
         .allowlist_function("ZT_.*")
         .allowlist_var("ZT_.*")
