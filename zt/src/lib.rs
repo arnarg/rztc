@@ -11,16 +11,25 @@ pub mod core {
     use crate::identity::Identity;
     use zt_sys::*;
 
+    pub enum ZTError {
+        OutOfMemory,
+        DataStoreFailed,
+        Internal,
+        NotFound,
+        UnsupportedOperation,
+        BadParameter,
+    }
+
     pub struct Node {
         zt_node: *const ZT_Node,
         _identity: Identity,
     }
 
     impl Node {
-        pub fn new() -> Node {
+        pub fn new() -> Result<Node, ZTError> {
             let n = Self {
                 zt_node: std::ptr::null(),
-                _identity: Identity::new(),
+                _identity: Identity::new()?,
             };
             let now = SystemTime::now().duration_since(UNIX_EPOCH).expect("unable to get time in millis");
             let now_millis = now.as_millis().try_into().unwrap();
@@ -46,7 +55,7 @@ pub mod core {
                     now_millis
                 );
             }
-            return n
+            Ok(n)
         }
 
         // pub fn process_background_tasks() -> ZT_ResultCode {
