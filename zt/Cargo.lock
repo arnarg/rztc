@@ -348,6 +348,7 @@ name = "zt"
 version = "0.1.0"
 dependencies = [
  "libc",
+ "regex",
  "zt-sys",
 ]
 

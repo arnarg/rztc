@@ -11,6 +11,7 @@ pub mod core {
     use crate::identity::Identity;
     use zt_sys::*;
 
+    #[derive(Debug)]
     pub enum ZTError {
         OutOfMemory,
         DataStoreFailed,

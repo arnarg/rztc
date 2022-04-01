@@ -36,7 +36,6 @@ bool ZT_Identity_fromString(ZT_Identity *identity, const char *str) {
 	return reinterpret_cast<ZeroTier::Identity*>(identity)->fromString(str);
 }
 
-char *ZT_Identity_toString(ZT_Identity *identity, bool includePrivate) {
-	char *buf = (char*)malloc(sizeof(char) * ZT_IDENTITY_STRING_BUFFER_LENGTH);
+char *ZT_Identity_toString(ZT_Identity *identity, bool includePrivate, char *buf) {
 	return reinterpret_cast<ZeroTier::Identity*>(identity)->toString(includePrivate, buf);
 }

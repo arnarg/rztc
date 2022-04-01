@@ -17,7 +17,7 @@ enum ZT_ResultCode ZT_Identity_generate(ZT_Identity *identity);
 
 bool ZT_Identity_fromString(ZT_Identity *identity, const char *str);
 
-char *ZT_Identity_toString(ZT_Identity *identity, bool includePrivate);
+char *ZT_Identity_toString(ZT_Identity *identity, bool includePrivate, char *buf);
 
 #ifdef __cplusplus
 } // extern "C"
