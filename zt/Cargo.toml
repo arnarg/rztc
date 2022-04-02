@@ -10,7 +10,11 @@ path = "src/lib.rs"
 [dependencies]
 zt-sys = { path = "zt-sys" }
 libc = "0.2"
+sha2 = "0.10"
+sodiumoxide = "0.2"
+byteorder = "1.4"
 
 [dev-dependencies]
 regex = "1.5"
+hex-literal = "0.3"
 
