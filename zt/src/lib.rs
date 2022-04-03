@@ -8,7 +8,6 @@ pub mod core {
     use std::os::raw::{c_int, c_uint};
     use std::time::{SystemTime, UNIX_EPOCH};
     use std::option::Option::Some;
-    use crate::identity::Identity;
     use zt_sys::*;
 
     #[derive(Debug)]
@@ -23,7 +22,6 @@ pub mod core {
 
     pub struct Node {
         zt_node: *const ZT_Node,
-        _identity: Identity,
     }
 
     impl Node {
@@ -31,7 +29,6 @@ pub mod core {
         pub fn new() -> Result<Node, ZTError> {
             let n = Self {
                 zt_node: std::ptr::null(),
-                _identity: Identity::new()?,
             };
             let now = SystemTime::now().duration_since(UNIX_EPOCH).expect("unable to get time in millis");
             let now_millis = now.as_millis().try_into().unwrap();

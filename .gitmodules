@@ -1,3 +1,6 @@
 [submodule "zt/zt-sys/zerotierone"]
 	path = zt/zt-sys/zerotierone
 	url = https://github.com/zerotier/zerotierone.git
+[submodule "zt/zerotier-rs"]
+	path = zt/zerotier-rs
+	url = https://github.com/arnarg/zerotier-rs.git
