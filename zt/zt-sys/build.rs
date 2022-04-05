@@ -39,9 +39,6 @@ fn main() {
         "zerotierone/node/Trace.cpp",
         "zerotierone/node/Utils.cpp",
         "zerotierone/node/Bond.cpp",
-        // We also extend it and expose the Identity
-        // class on a C interface
-        "src/ZTIdentity.cpp",
     ];
 
     let target = env::var("TARGET").unwrap();
@@ -130,7 +127,6 @@ fn main() {
 
     let bindings = builder()
         .header("zerotierone/include/ZeroTierOne.h")
-        .header("src/ZTIdentity.h")
         .allowlist_type("ZT_.*")
         .allowlist_function("ZT_.*")
         .allowlist_var("ZT_.*")
