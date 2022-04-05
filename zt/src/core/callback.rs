@@ -35,7 +35,9 @@ pub extern "C" fn state_put_function(
 ) {
     let n: &Node = cast_to_node(node);
     if let Some(state_object) = StateObject::from_u32(object_type) {
-        n.set_state(state_object, data, len);
+        // unsafe call! We have to trust that ZT_Node reports correct length
+        let buf = unsafe{ std::slice::from_raw_parts(data as *const u8, len as usize) };
+        n.set_state(state_object, buf);
     }
 }
 
@@ -51,7 +53,9 @@ pub extern "C" fn state_get_function(
 ) -> c_int {
     let n: &Node = cast_to_node(node);
     if let Some(state_object) = StateObject::from_u32(object_type) {
-        return n.get_state(state_object, data, len);
+        // unsafe call! We have to trust that ZT_Node reports correct length
+        let buf = unsafe{ std::slice::from_raw_parts_mut(data as *mut u8, len as usize) };
+        return n.get_state(state_object, buf) as i32;
     }
     -1
 }

@@ -1,17 +1,14 @@
+use zt_sys::*;
 use failure::Fail;
 
-#[derive(Debug, Fail)]
-pub enum InternalError {
+#[derive(Debug, Fail, FromPrimitive)]
+pub enum FatalError {
     #[fail(display = "out of memory")]
-    OutOfMemory,
+    OutOfMemory = ZT_ResultCode_ZT_RESULT_FATAL_ERROR_OUT_OF_MEMORY as isize,
     #[fail(display = "data store failed")]
-    DataStoreFailed,
+    DataStoreFailed = ZT_ResultCode_ZT_RESULT_FATAL_ERROR_DATA_STORE_FAILED as isize,
     #[fail(display = "internal error")]
-    Internal,
-    #[fail(display = "unsupported operation")]
-    UnsupportedOperation,
-    #[fail(display = "bad parameter")]
-    BadParameter,
+    Internal = ZT_ResultCode_ZT_RESULT_FATAL_ERROR_INTERNAL as isize,
 }
 
 // #[derive(Debug, Fail)]

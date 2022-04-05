@@ -87,8 +87,8 @@ impl TryFrom<&str> for Identity {
     }
 }
 
-// Implement ConfigurationProvider so we can pass Identity straight
-// to a Node. Set operations are no-op.
+/// Implement ConfigurationProvider so we can pass Identity straight
+/// to a Node. Set operations are no-op.
 impl ConfigurationProvider for Identity {
     fn get_public_identity(&self) -> String {
         self.to_public_string()
@@ -98,11 +98,13 @@ impl ConfigurationProvider for Identity {
         self.to_secret_string()
     }
 
-    fn set_public_identity(&self, _public_identity: String) -> bool {
+    fn set_public_identity(&self, public_identity: &[u8]) -> bool {
+        println!("new set public identity request: {}", std::str::from_utf8(public_identity).expect("unable to convert to string"));
         false
     }
 
-    fn set_secret_identity(&self, _secret_identity: String) -> bool {
+    fn set_secret_identity(&self, secret_identity: &[u8]) -> bool {
+        println!("new set secret identity request: {}", std::str::from_utf8(secret_identity).expect("unable to convert to string"));
         false
     }
 }
