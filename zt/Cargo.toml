@@ -10,19 +10,13 @@ path = "src/lib.rs"
 [dependencies]
 zt-sys = { path = "zt-sys" }
 libc = "0.2"
-sha2 = "0.10"
-sodiumoxide = "0.2"
-byteorder = "1.4"
 ed25519-dalek = "1.0"
 x25519-dalek = "1.2"
 rand = "0.7"
 hex = "0.4"
 zerotier = { version = "0.1", path = "zerotier-rs" }
 failure = "0.1"
-serde = "1.0"
-serde_yaml = "0.8"
-
-[dev-dependencies]
-regex = "1.5"
-hex-literal = "0.3"
+num = "0.4"
+num-derive = "0.3"
+num-traits = "0.2"
 

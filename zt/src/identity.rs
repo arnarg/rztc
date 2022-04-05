@@ -6,8 +6,12 @@ extern crate zerotier;
 
 use rand::RngCore;
 use rand::rngs::OsRng;
-use zerotier::Address;
-use failure::{Fallible, Fail};
+use failure::{Fallible, Fail, Error};
+use std::fmt;
+use hex::FromHex;
+use crate::core::ConfigurationProvider;
+
+pub use zerotier::InternalError;
 
 #[derive(Debug, Fail)]
 pub enum GenerateError {
@@ -16,7 +20,7 @@ pub enum GenerateError {
 }
 
 pub struct Identity {
-    pub address: Address,
+    pub address: zerotier::Address,
     pub public_key: [u8; 64],
     secret_key: [u8; 64],
 }
@@ -33,8 +37,9 @@ impl Identity {
             let mut x_secret = [0u8; 32];
             OsRng.fill_bytes(&mut x_secret);
             // Get x25519 public key
-            let x_static = x25519_dalek::StaticSecret::from(x_secret.clone());
-            let x_public = x25519_dalek::PublicKey::from(x_static.to_bytes());
+            let x_public = x25519_dalek::PublicKey::from(
+                    x25519_dalek::StaticSecret::from(x_secret.clone()).to_bytes()
+                );
 
             // Copy keys to final buffers
             secbuf[..32].copy_from_slice(&x_secret);
@@ -42,8 +47,7 @@ impl Identity {
             pubbuf[..32].copy_from_slice(&x_public.to_bytes());
             pubbuf[32..].copy_from_slice(&ed_keypair.public.to_bytes());
 
-            let pubkey = zerotier::PublicKey::try_from(&pubbuf[..]).unwrap();
-            if let Ok(address) = Address::try_from(&pubkey) {
+            if let Ok(address) = buf_to_address(&pubbuf[..]) {
                 return Ok(Self {
                     address: address,
                     public_key: pubbuf,
@@ -55,7 +59,7 @@ impl Identity {
     }
 
     pub fn to_public_string(&self) -> String {
-        format!("{}:0:{}", serde_yaml::to_string(&self.address).unwrap(), hex::encode(self.public_key))
+        format!("{}:0:{}", self.address, hex::encode(self.public_key))
     }
 
     pub fn to_secret_string(&self) -> String {
@@ -63,32 +67,71 @@ impl Identity {
     }
 }
 
+/// Tries to derive identity from str. Throws
+/// [`InternalError`](enum.InternalError.html) for invalid addresses.
+impl TryFrom<&str> for Identity {
+    type Error = Error;
+
+    fn try_from(identity: &str) -> Fallible<Self> {
+        let split: Vec<&str> = identity.split(':').collect();
+        let (address, public_key, secret_key) = match &split[..] {
+            [address, "0", public_key, secret_key] => (address, public_key, secret_key),
+            _ => return Err(InternalError::MalformedIdentity.into())
+        };
+
+        Ok(Self {
+            address: zerotier::Address::try_from(hex::decode(address)?.as_slice())?,
+            public_key: <[u8; 64]>::from_hex(public_key)?,
+            secret_key: <[u8; 64]>::from_hex(secret_key)?,
+        })
+    }
+}
+
+// Implement ConfigurationProvider so we can pass Identity straight
+// to a Node. Set operations are no-op.
+impl ConfigurationProvider for Identity {
+    fn get_public_identity(&self) -> String {
+        self.to_public_string()
+    }
+
+    fn get_secret_identity(&self) -> String {
+        self.to_secret_string()
+    }
+
+    fn set_public_identity(&self, _public_identity: String) -> bool {
+        false
+    }
+
+    fn set_secret_identity(&self, _secret_identity: String) -> bool {
+        false
+    }
+}
+
+impl fmt::Display for Identity {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.address)
+    }
+}
+
+fn buf_to_address(public_key: &[u8]) -> Fallible<zerotier::Address> {
+    let pubkey = zerotier::PublicKey::try_from(public_key)?;
+    zerotier::Address::try_from(&pubkey)
+}
+
 #[cfg(test)]
 mod tests {
-    extern crate regex;
-
-    use regex::Regex;
     use super::*;
 
     // TODO: write proper test
     #[test]
-    fn test_generate() {
-        // let buf: [u8; 32] = [0x04, 0x4f, 0x6a, 0xbd, 0x6a, 0xe6, 0x76, 0xae, 0x29, 0x6a, 0x23, 0xbb, 0x1b, 0x2f, 0x9f, 0xdf, 0xb6, 0xfb, 0xac, 0xdb, 0xf7, 0x88, 0xdc, 0x04, 0xda, 0xf2, 0x76, 0xa1, 0x04, 0xfc, 0x54, 0xcd];
-        // let xkey = x25519_dalek::StaticSecret::from(buf);
-        // let xkey = x25519_dalek::PublicKey::from(&xkey);
-        // println!("{:x?}", xkey.to_bytes());
+    fn test_identity() {
+        let identity_str = "666e787206:0:b0740d0eb870517d835d5d1080bebe84c3097acebcf737f4872c574f2716ca534f9abf533c0ff40cbe028aa7a5774762a77e9e85b4cddf67d892ef59234704f7:b7740d0eb870517d835d5d1080bebe84c3097acebcf737f4872c574f2716cad39272c4ef4e23f0d7414b1c181a86d9f66a38f51fda0e4c252abf0ba22e67371a";
+        let identity = Identity::try_from(identity_str).unwrap();
 
-        let identity = Identity::generate().unwrap();
-        println!("{}", identity.to_public_string());
-        println!("{}", identity.to_secret_string());
+        assert_eq!(format!("{}", identity), "666e787206");
 
-        //println!("{}:0:{}:{}", hex::encode(identity.address.0), hex::encode(identity.public_key.into() as [u8; 64]), hex::encode(identity.secret_key.into() as [u8; 64]))
-        // let id_str: str = identity.serialize();
-        // // Make sure the secret string matches an expected pattern
-        // let re = Regex::new(r"^[a-z0-9]{10}:0:[a-z0-9]{128}:[a-z0-9]{128}$").unwrap();
-        // assert!(re.is_match(id_str));
-        // // Make sure it's not filled with zeros, i.e. no data
-        // let re2 = Regex::new(r"^0{10}:0:0{128}:0{128}$").unwrap();
-        // assert!(!re2.is_match(id_str));
+        assert_eq!(identity.to_public_string(), "666e787206:0:b0740d0eb870517d835d5d1080bebe84c3097acebcf737f4872c574f2716ca534f9abf533c0ff40cbe028aa7a5774762a77e9e85b4cddf67d892ef59234704f7");
+
+        assert_eq!(identity.to_secret_string(), identity_str);
     }
 }
