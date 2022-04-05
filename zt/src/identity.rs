@@ -19,6 +19,7 @@ pub enum GenerateError {
     TooManyRetries,
 }
 
+#[derive(Debug)]
 pub struct Identity {
     pub address: zerotier::Address,
     pub public_key: [u8; 64],
@@ -73,7 +74,7 @@ impl TryFrom<&str> for Identity {
     type Error = Error;
 
     fn try_from(identity: &str) -> Fallible<Self> {
-        let split: Vec<&str> = identity.split(':').collect();
+        let split: Vec<&str> = identity.trim().split(':').collect();
         let (address, public_key, secret_key) = match &split[..] {
             [address, "0", public_key, secret_key] => (address, public_key, secret_key),
             _ => return Err(InternalError::MalformedIdentity.into())
