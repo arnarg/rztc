@@ -10,6 +10,7 @@ use std::ffi::c_void;
 use std::time::{SystemTime, UNIX_EPOCH};
 use std::option::Option::Some;
 use num_traits::FromPrimitive;
+use failure::Fallible;
 
 pub struct Node {
     zt_node: *mut ZT_Node,
@@ -18,7 +19,7 @@ pub struct Node {
 
 impl Node {
     /// Creates an instance of node
-    pub fn new(conf_provider: Box<dyn ConfigurationProvider>) -> Result<Node, FatalError> {
+    pub fn new(conf_provider: Box<dyn ConfigurationProvider>) -> Fallible<Node> {
         let mut n = Self {
             zt_node: std::ptr::null_mut(),
             config_provider: conf_provider,
@@ -51,8 +52,8 @@ impl Node {
         match ret {
             0 => Ok(n),
             _ => match FatalError::from_u32(ret) {
-                Some(err) => Err(err),
-                None => Err(FatalError::Internal),
+                Some(err) => Err(err.into()),
+                None => Err(FatalError::Internal.into()),
             },
         }
     }
@@ -60,19 +61,25 @@ impl Node {
     /// Perform periodic background operations
     ///
     /// Returns next deadline when it should run in milliseconds since epoch
-    pub fn process_background_tasks(&self) -> i64 {
+    pub fn process_background_tasks(&self) -> Fallible<i64> {
         let now = SystemTime::now().duration_since(UNIX_EPOCH).expect("unable to get time in millis");
         let now: i64 = now.as_millis().try_into().unwrap();
         let mut next: i64 = 0;
-        unsafe {
+        let ret = unsafe {
             ZT_Node_processBackgroundTasks(
                 self.zt_node as *mut ZT_Node,
-                0 as *mut c_void,
+                0 as *mut c_void, // thread pointers are unused by us
                 now,
-                &mut next,
-            );
+                &mut next
+            )
+        };
+        match ret {
+            0 => Ok(next),
+            _ => match FatalError::from_u32(ret) {
+                Some(err) => Err(err.into()),
+                None => Err(FatalError::Internal.into()),
+            },
         }
-        next
     }
 
     // Gets called from C (through a callback wrapper) when an event occurs
