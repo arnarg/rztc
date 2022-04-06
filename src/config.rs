@@ -41,13 +41,12 @@ impl ConfigurationProvider for FileConfig {
         let res = match object_type {
             StateObject::PublicIdentity => Vec::from(&self.get_identity()?[..141]),
             StateObject::SecretIdentity => Vec::from(&self.get_identity()?[..]),
-            _ => Err(StateError::NotFound)?,
         };
         Ok(res)
     }
 
     fn set_state(&self, object_type: StateObject, data: &[u8]) -> Fallible<()> {
-        match object_type {
+        let _res = match object_type {
             StateObject::SecretIdentity => self.set_identity(data),
             _ => Err(StateError::NotFound.into()),
         };
