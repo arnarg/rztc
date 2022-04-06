@@ -7,3 +7,6 @@ edition = "2021"
 
 [dependencies]
 zt = { path = "zt" }
+mio = { version = "0.8", features = ["default", "os-poll", "net"] }
+failure = "0.1"
+hex = "0.4"

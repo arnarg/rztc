@@ -11,6 +11,14 @@ pub enum FatalError {
     Internal = ZT_ResultCode_ZT_RESULT_FATAL_ERROR_INTERNAL as isize,
 }
 
+#[derive(Debug, Fail, FromPrimitive)]
+pub enum StateError {
+    #[fail(display = "state object not found")]
+    NotFound,
+    #[fail(display = "state object is too long")]
+    TooLong,
+}
+
 // #[derive(Debug, Fail)]
 // pub enum NetworkError {
 //     #[fail(display = "network not found")]

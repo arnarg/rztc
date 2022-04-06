@@ -4,7 +4,7 @@ use std::ffi::c_void;
 use std::os::raw::{c_int, c_uint};
 use num_traits::FromPrimitive;
 
-#[derive(Debug, FromPrimitive)]
+#[derive(Debug, FromPrimitive, PartialEq, Eq)]
 pub enum Event {
     Up = ZT_Event_ZT_EVENT_UP as isize,
     Down = ZT_Event_ZT_EVENT_DOWN as isize,
@@ -12,14 +12,16 @@ pub enum Event {
     Offline = ZT_Event_ZT_EVENT_OFFLINE as isize,
 }
 
-#[derive(Debug, FromPrimitive)]
+#[derive(Debug, FromPrimitive, PartialEq, Eq)]
 pub enum StateObject {
     PublicIdentity = ZT_StateObjectType_ZT_STATE_OBJECT_IDENTITY_PUBLIC as isize,
     SecretIdentity = ZT_StateObjectType_ZT_STATE_OBJECT_IDENTITY_SECRET as isize,
 }
 
-fn cast_to_node(node: *mut c_void) -> &'static Node {
-    unsafe { &*(node as *const Node) }
+macro_rules! to_node {
+    ( $a:expr ) => {
+        unsafe { &*($a as *const Node) }
+    };
 }
 
 // Callback functions expected by ZT_Node
@@ -33,11 +35,18 @@ pub extern "C" fn state_put_function(
     data: *const c_void,
     len: c_int
 ) {
-    let n: &Node = cast_to_node(node);
+    // Recover the rust native Node through the user pointer
+    let n: &Node = to_node!(node);
+    // Casting the ZT_StateObjectType from C to rust native enum
+    // If it is not recognized we do nothing
     if let Some(state_object) = StateObject::from_u32(object_type) {
-        // unsafe call! We have to trust that ZT_Node reports correct length
-        let buf = unsafe{ std::slice::from_raw_parts(data as *const u8, len as usize) };
-        n.set_state(state_object, buf);
+        if len < 0 {
+            // call delete_state
+        } else {
+            // unsafe call! We have to trust that ZT_Node reports correct length
+            let buf = unsafe{ std::slice::from_raw_parts(data as *const u8, len as usize) };
+            n.set_state(state_object, buf);
+        }
     }
 }
 
@@ -51,7 +60,9 @@ pub extern "C" fn state_get_function(
     data: *mut c_void,
     len: c_uint
 ) -> c_int {
-    let n: &Node = cast_to_node(node);
+    // Recover the rust native Node through the user pointer
+    let n: &Node = to_node!(node);
+    // Casting the ZT_StateObjectType from C to rust native enum
     if let Some(state_object) = StateObject::from_u32(object_type) {
         // unsafe call! We have to trust that ZT_Node reports correct length
         let buf = unsafe{ std::slice::from_raw_parts_mut(data as *mut u8, len as usize) };
@@ -65,17 +76,26 @@ pub extern "C" fn state_get_function(
 pub extern "C" fn wire_packet_send_function(
     _n: *mut ZT_Node,
     node: *mut c_void,
-    _tptr: *mut c_void,
+    tptr: *mut c_void,
     socket: i64,
-    _address: *const sockaddr_storage,
+    address: *const sockaddr_storage,
     data: *const c_void,
     len: c_uint,
     _ttl: c_uint
 ) -> c_int {
-    let n: &Node = cast_to_node(node);
+    // Recover the rust native Node through the user pointer
+    let n: &Node = to_node!(node);
+    // Recover the rust native PhyWrapper through the thread pointer
+    let p: &PhyWrapper = unsafe {
+        &*(tptr as *const PhyWrapper)
+    };
     // unsafe call! We have to trust that ZT_Node reports correct length
     let buf = unsafe{ std::slice::from_raw_parts(data as *const u8, len as usize) };
-    !n.on_wire_packet(buf, socket) as c_int
+    // converting C native sockaddr_storage to rust native SocketAddr
+    let addr = unsafe{
+        sockaddr_to_addr(&*address, std::mem::size_of::<sockaddr_storage>()).unwrap()
+    };
+    !n.on_wire_packet(p.0, buf, socket, addr.clone()) as c_int
 }
 
 #[no_mangle]
@@ -86,7 +106,8 @@ pub extern "C" fn event_callback(
     event_type: ZT_Event,
     _payload: *const c_void
 ) {
-    let n: &Node = cast_to_node(node);
+    // Recover the rust native Node through the user pointer
+    let n: &Node = to_node!(node);
     if let Some(ev) = Event::from_u32(event_type) {
         n.on_event(ev);
     }

@@ -8,6 +8,9 @@ build = "build.rs"
 name = "zt_sys"
 path = "lib.rs"
 
+[dependencies]
+libc = "0.2"
+
 [build-dependencies]
 cc = "1.0"
 bindgen = "0.59"

@@ -130,6 +130,7 @@ fn main() {
         .allowlist_type("ZT_.*")
         .allowlist_function("ZT_.*")
         .allowlist_var("ZT_.*")
+        .blocklist_type("sockaddr_storage")
         .clang_arg("--includestdbool.h")
         .generate()
         .expect("unable to generate bindings for zerotiercore");
