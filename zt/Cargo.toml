@@ -14,7 +14,6 @@ ed25519-dalek = "1.0"
 x25519-dalek = "1.2"
 rand = "0.7"
 hex = "0.4"
-zerotier = { version = "0.1", path = "zerotier-rs" }
 failure = "0.1"
 num = "0.4"
 num-derive = "0.3"
