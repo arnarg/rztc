@@ -71,7 +71,6 @@ pub extern "C" fn state_get_function(
     -1
 }
 
-// TODO: implement
 #[no_mangle]
 pub extern "C" fn wire_packet_send_function(
     _n: *mut ZT_Node,

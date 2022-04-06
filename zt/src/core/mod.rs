@@ -16,6 +16,17 @@ use libc::sockaddr_storage;
 use num_traits::FromPrimitive;
 use failure::Fallible;
 
+macro_rules! log_packet {
+    ( $a:expr ) => {
+        if $a.len() > 20 {
+            let id = &$a[..8];
+            let dest = &$a[8..13];
+            let src = &$a[13..18];
+            println!("{}: {} -> {}", hex::encode(id), hex::encode(src), hex::encode(dest));
+        }
+    };
+}
+
 pub struct Node {
     zt_node: *mut ZT_Node,
     online: Cell<bool>,
@@ -136,6 +147,7 @@ impl Node {
     }
 
     pub fn process_wire_packet(&self, phy: &dyn PhyProvider, buf: &[u8], len: usize, addr: &SocketAddr, socket: i64) -> Fallible<i64> {
+        log_packet!(buf);
         // Get current time in millis since epoch
         let now = SystemTime::now().duration_since(UNIX_EPOCH).expect("unable to get time in millis");
         let now: i64 = now.as_millis().try_into().unwrap();
@@ -218,6 +230,7 @@ impl Node {
     // Gets called from C (through a callback wrapper) when a packet should be
     // sent to a socket
     fn on_wire_packet(&self, phy: &dyn PhyProvider, buf: &[u8], socket: i64, addr: SocketAddr) -> bool {
+        log_packet!(buf);
         if addr.is_ipv4() {
             match socket {
                 -1 => phy.send_all(&addr, buf),
