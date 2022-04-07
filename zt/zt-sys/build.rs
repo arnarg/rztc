@@ -55,6 +55,19 @@ fn main() {
         process_aarch64(&target, &mut files, &mut cfg);
     }
 
+    // Build RZTCController
+    cc::Build::new()
+        .file("src/controller/RZTCController.cpp")
+        .cpp(true)
+        .include("zerotierone/include")
+        .include("zerotierone/node")
+        .cpp_link_stdlib("stdc++")
+        .warnings(false)
+        .pic(true)
+        .opt_level(3)
+        .flag("-fstack-protector")
+        .compile("librztc.a");
+
     // Finish setup of compiler and build libzerotierone
     cfg.files(files)
         .cpp(true)
@@ -65,6 +78,7 @@ fn main() {
         .opt_level(3)
         .flag("-fstack-protector")
         .compile("libzerotierone.a");
+
 
     // let bindings = builder()
     //     .header("zerotierone/include/ZeroTierOne.h")

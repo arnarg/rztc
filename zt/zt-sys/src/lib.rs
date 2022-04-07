@@ -5,5 +5,6 @@
 extern crate libc;
 
 mod bindings;
+pub mod controller;
 
 pub use bindings::*;
