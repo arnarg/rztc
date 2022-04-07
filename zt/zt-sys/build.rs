@@ -1,3 +1,4 @@
+#![allow(unused_imports)]
 extern crate cc;
 extern crate bindgen;
 
@@ -42,12 +43,45 @@ fn main() {
     ];
 
     let target = env::var("TARGET").unwrap();
-    let dst = PathBuf::from(env::var("OUT_DIR").unwrap());
+    // let dst = PathBuf::from(env::var("OUT_DIR").unwrap());
 
     let mut cfg = cc::Build::new();
 
-    // x86_64 specific config
+    // Setup architecture specific files and compile options
     if target.contains("x86_64") {
+        process_x86(&target, &mut files, &mut cfg);
+    }
+    if target.contains("aarch64") {
+        process_aarch64(&target, &mut files, &mut cfg);
+    }
+
+    // Finish setup of compiler and build libzerotierone
+    cfg.files(files)
+        .cpp(true)
+        .include("zerotierone/include")
+        .cpp_link_stdlib("stdc++")
+        .warnings(false)
+        .pic(true)
+        .opt_level(3)
+        .flag("-fstack-protector")
+        .compile("libzerotierone.a");
+
+    // let bindings = builder()
+    //     .header("zerotierone/include/ZeroTierOne.h")
+    //     .allowlist_type("ZT_.*")
+    //     .allowlist_function("ZT_.*")
+    //     .allowlist_var("ZT_.*")
+    //     .blocklist_type("sockaddr_storage")
+    //     .clang_arg("--includestdbool.h")
+    //     .generate_comments(false)
+    //     .generate()
+    //     .expect("unable to generate bindings for zerotiercore");
+    //
+    // bindings.write_to_file(dst.join("bindings.rs"))
+    //      .expect("unable to write bindings to file");
+}
+
+fn process_x86(target: &String, files: &mut Vec<&str>, cfg: &mut cc::Build) {
         files.append(&mut vec![
             "zerotierone/ext/x64-salsa2012-asm/salsa2012.s"
         ]);
@@ -107,34 +141,17 @@ fn main() {
                 "zerotierone/ext/ed25519-amd64-asm/sc25519_window4.c",
                 "zerotierone/ext/ed25519-amd64-asm/sign.c"
             ]);
+
+            cfg.flag("-msse")
+                .flag("-msse2")
+                .define("ZT_USE_X64_ASM_SALSA2012", None);
         }
-    }
-    if target.contains("aarch64") {
-        files.append(&mut vec![
-            "ext/arm32-neon-salsa2012-asm/salsa2012.s"
-        ]);
-    }
+}
 
-    cfg.files(files)
-        .cpp(true)
-        .include("zerotierone/include")
-        .cpp_link_stdlib("stdc++")
-        .warnings(false)
-        .pic(true)
-        .opt_level(3)
-        .flag("-fstack-protector")
-        .compile("libzerotierone.a");
-
-    let bindings = builder()
-        .header("zerotierone/include/ZeroTierOne.h")
-        .allowlist_type("ZT_.*")
-        .allowlist_function("ZT_.*")
-        .allowlist_var("ZT_.*")
-        .blocklist_type("sockaddr_storage")
-        .clang_arg("--includestdbool.h")
-        .generate()
-        .expect("unable to generate bindings for zerotiercore");
-
-    bindings.write_to_file(dst.join("bindings.rs"))
-         .expect("unable to write bindings to file");
+fn process_aarch64(_target: &String, _files: &mut Vec<&str>, cfg: &mut cc::Build) {
+    cfg.define("ZT_NO_TYPE_PUNNING", None)
+       .define("ZT_ARCH_ARM_HAS_NEON", None)
+       .flag("-march=armv8-a+crypto")
+       .flag("-mtune=generic")
+       .flag("-mtune=strict-align");
 }

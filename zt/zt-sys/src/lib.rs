@@ -4,6 +4,6 @@
 
 extern crate libc;
 
-use libc::sockaddr_storage;
+mod bindings;
 
-include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
+pub use bindings::*;
