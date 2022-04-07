@@ -239,6 +239,15 @@ impl Node {
     /// Returns online status of node.
     pub fn is_online(&self) -> bool { self.online.get() }
 
+    /// Returns version of libzerotierone
+    pub fn version(&self) -> String {
+        let mut major: i32 = 0;
+        let mut minor: i32 = 0;
+        let mut patch: i32 = 0;
+        unsafe { ZT_version(&mut major, &mut minor, &mut patch) };
+        format!("{}.{}.{}", major, minor, patch)
+    }
+
     // Gets called from C (through a callback wrapper) when an event occurs
     fn on_event(&self, event: Event) {
         match event {

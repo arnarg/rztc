@@ -55,6 +55,7 @@ impl NodeRunner {
 fn main() {
     let file_config = FileConfig::new("/tmp/rztc/identity.secret");
     let node = Node::new(Box::new(file_config)).unwrap();
+    println!("libzerotierone v{}", node.version());
     let phy = Phy::new(9993).unwrap();
     let mut runner = NodeRunner::new(node, phy);
 
