@@ -153,5 +153,5 @@ fn process_aarch64(_target: &String, _files: &mut Vec<&str>, cfg: &mut cc::Build
        .define("ZT_ARCH_ARM_HAS_NEON", None)
        .flag("-march=armv8-a+crypto")
        .flag("-mtune=generic")
-       .flag("-mtune=strict-align");
+       .flag("-mstrict-align");
 }
