@@ -21,8 +21,13 @@ impl FileConfig {
         if self.identity.get()[..5] != [0,0,0,0,0] {
             return Ok(self.identity.get());
         }
+        // Reading identity from identity_file
         let id = std::fs::read_to_string(self.identity_file.as_str())?;
-        self.identity.get().copy_from_slice(&id.trim().as_bytes()[..IDENTITY_LENGTH]);
+        // Copying the contents of the file to a buffer and setting
+        // the contents as the identity
+        let mut buf = [0u8; IDENTITY_LENGTH];
+        buf.copy_from_slice(&id.trim().as_bytes()[..IDENTITY_LENGTH]);
+        self.identity.set(buf);
         Ok(self.identity.get())
     }
 
