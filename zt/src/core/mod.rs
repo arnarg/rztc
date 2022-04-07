@@ -22,7 +22,29 @@ macro_rules! log_packet {
             let id = &$a[..8];
             let dest = &$a[8..13];
             let src = &$a[13..18];
-            println!("{}: {} -> {}", hex::encode(id), hex::encode(src), hex::encode(dest));
+            let meta = $a[18];
+            let flags: u8 = meta >> 6;
+            let cipher: u8 = (meta >> 3) & 0b111;
+            let cipher = match cipher {
+                0 => "none",
+                1 => "C25519/POLY1305/SALSA2012",
+                3 => "AES-GMAC-SIV",
+                _ => "unknown",
+            };
+            let hops: u8 = meta & 0b111;
+            print!(
+                "{}: {} -> {} (flags: 0b{:02b}, cipher: {}, hops: {})",
+                hex::encode(id),
+                hex::encode(src),
+                hex::encode(dest),
+                flags,
+                cipher,
+                hops
+            );
+            if $a.len() > 30 && cipher == "none" && $a[27] == 1 {
+                print!(" HELLO");
+            }
+            print!("\n");
         }
     };
 }
