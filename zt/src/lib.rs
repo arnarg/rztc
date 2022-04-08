@@ -6,4 +6,5 @@ extern crate num_derive;
 
 pub mod core;
 pub mod controller;
+pub mod dictionary;
 

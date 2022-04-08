@@ -16,6 +16,14 @@ use libc::sockaddr_storage;
 use num_traits::FromPrimitive;
 use failure::Fallible;
 
+macro_rules! maybe_init {
+    ( $a:expr ) => {
+        if $a.zt_node.is_null() {
+            $a.init()?;
+        }
+    }
+}
+
 macro_rules! log_packet {
     ( $a:expr ) => {
         if $a.len() > 20 {
@@ -53,6 +61,7 @@ pub struct Node {
     zt_node: *mut ZT_Node,
     online: Cell<bool>,
     config_provider: Box<dyn ConfigurationProvider>,
+    controller: Option<Box<dyn Controller>>,
 }
 
 impl Node {
@@ -62,6 +71,7 @@ impl Node {
             zt_node: std::ptr::null_mut(),
             online: Cell::new(false),
             config_provider: conf_provider,
+            controller: None,
         })
     }
 
@@ -78,7 +88,11 @@ impl Node {
     // once we have the correct pointer value in this init private function
     // and just call it in every public function if self.zt_node is still
     // a null pointer.
-    fn init(&self, now: i64) -> Fallible<()> {
+    fn init(&self) -> Fallible<()> {
+        // Get current time in millis since epoch
+        let now = SystemTime::now().duration_since(UNIX_EPOCH).expect("unable to get time in millis");
+        let now: i64 = now.as_millis().try_into().unwrap();
+
         // Construct callback struct ZT_Node_new is expecting.
         let cbs = ZT_Node_Callbacks {
             version: 0,
@@ -120,15 +134,12 @@ impl Node {
     ///
     /// Returns next deadline when it should run in milliseconds since epoch
     pub fn process_background_tasks(&self, phy: &dyn PhyProvider) -> Fallible<i64> {
+        maybe_init!(self);
+
         let now = SystemTime::now().duration_since(UNIX_EPOCH).expect("unable to get time in millis");
         let now: i64 = now.as_millis().try_into().unwrap();
         let mut next: i64 = 0;
 
-        // Do we still need to initialize the node?
-        // See comment above init().
-        if self.zt_node.is_null() {
-            self.init(now)?;
-        }
 
         // Calling processBackgroundTasks in C calls a long chain of functions until
         // eventually calling back into rust in wire_packet_send_function callback.
@@ -170,15 +181,11 @@ impl Node {
 
     pub fn process_wire_packet(&self, phy: &dyn PhyProvider, buf: &[u8], len: usize, addr: &SocketAddr, socket: i64) -> Fallible<i64> {
         log_packet!(buf);
+        maybe_init!(self);
+
         // Get current time in millis since epoch
         let now = SystemTime::now().duration_since(UNIX_EPOCH).expect("unable to get time in millis");
         let now: i64 = now.as_millis().try_into().unwrap();
-
-        // Do we still need to initialize the node?
-        // See comment above init().
-        if self.zt_node.is_null() {
-            self.init(now)?;
-        }
 
         // Variable for next deadline
         let mut next: i64 = 0;
@@ -288,10 +295,19 @@ impl Node {
         -1
     }
 
-    // TODO: implement
-    // pub fn register_controller() {
-    //
-    // }
+    pub fn register_controller(&mut self, controller: Box<dyn Controller>) -> Fallible<()> {
+        maybe_init!(self);
+
+        let ctrl_ptr = controller.init_controller()?;
+        unsafe {
+            ZT_Node_setNetconfMaster(
+                self.zt_node,
+                ctrl_ptr as *mut _,
+            )
+        };
+        self.controller = Some(controller);
+        Ok(())
+    }
 }
 
 impl Drop for Node {
@@ -312,4 +328,8 @@ struct PhyWrapper<'a>(&'a dyn PhyProvider);
 pub trait PhyProvider {
     fn send(&self, address: &SocketAddr, socket: i64, buf: &[u8]) -> usize;
     fn send_all(&self, address: &SocketAddr, buf: &[u8]) -> usize;
+}
+
+pub trait Controller {
+    fn init_controller(&self) -> Fallible<*const ()>;
 }

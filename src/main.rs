@@ -5,6 +5,7 @@ mod config;
 
 use std::time::{SystemTime, UNIX_EPOCH};
 use zt::core::Node;
+use zt::controller::Controller;
 use phy::Phy;
 use config::FileConfig;
 use failure::Fallible;
@@ -54,7 +55,8 @@ impl NodeRunner {
 
 fn main() {
     let file_config = FileConfig::new("/tmp/rztc/identity.secret");
-    let node = Node::new(Box::new(file_config)).unwrap();
+    let mut node = Node::new(Box::new(file_config)).unwrap();
+    node.register_controller(Box::new(Controller::new())).unwrap();
     println!("libzerotierone v{}", node.version());
     let phy = Phy::new(9993).unwrap();
     let mut runner = NodeRunner::new(node, phy);

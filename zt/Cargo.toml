@@ -19,4 +19,4 @@ num = "0.4"
 num-derive = "0.3"
 num-traits = "0.2"
 pnet_sys = "0.29"
-
+arrayref = "0.3"

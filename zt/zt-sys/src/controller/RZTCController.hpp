@@ -3,33 +3,22 @@
 
 #include <stdint.h>
 
+#include "RZTCController.h"
+
 #include <Constants.hpp>
-#include <Node.hpp>
 #include <NetworkController.hpp>
-#include <Identity.hpp>
 #include <Address.hpp>
 #include <InetAddress.hpp>
 #include <NetworkConfig.hpp>
 
 #define ZT_NETWORKCONFIG_METADATA_DICT_CAPACITY 1024
 
-using namespace ZeroTier;
+namespace ZeroTier {
 
-typedef void RZTC_Controller;
-
-typedef void (*RZTC_networkRequestCallback)(
-	RZTC_Controller *,               // Controller reference
-	void *,                          // User pointer, will be used for referencing rust native Controller
-	uint64_t,                        // Network ID
-	const struct sockaddr_storage *, // Request address
-	uint64_t,                        // Packet ID
-	uint64_t,                        // Identity address
-	const void *,                    // Metadata dict
-	uint64_t);                       // Metadata max length
-
-class RZTCController : public NetworkController {
+class RZTCController : public NetworkController
+{
 public:
-	RZTCController(Node *const node, void *uptr, RZTC_networkRequestCallback callback);
+	RZTCController(void *uptr, const struct RZTC_Controller_Callbacks *cbs);
 	virtual ~RZTCController();
 
 	/**
@@ -65,12 +54,13 @@ public:
 		bool sendLegacyFormat);
 
 private:
-	Node *const _node;
 	Identity _signingId;
 	std::string _signingIdAddressString;
 	NetworkController::Sender *_sender;
 	void *_uptr;
-	RZTC_networkRequestCallback _callback;
+	RZTC_Controller_Callbacks _cbs;
 };
+
+} // namespace ZeroTier
 
 #endif
