@@ -53,6 +53,14 @@ public:
 		const NetworkConfig &nc,
 		bool sendLegacyFormat);
 
+	virtual void sendError(
+		uint64_t nwid,
+		uint64_t requestPacketId,
+		const Address &destination,
+		NetworkController::ErrorCode errorCode,
+		const void *errorData,
+		unsigned int errorDataSize);
+
 private:
 	Identity _signingId;
 	std::string _signingIdAddressString;

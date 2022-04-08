@@ -14,10 +14,11 @@ pub enum DictionaryError {
     WrongType,
 }
 
-pub struct Dictionary<'a>(&'a [u8]);
+#[derive(Clone)]
+pub struct Dictionary(Vec<u8>);
 
-impl<'a> Dictionary<'a> {
-    pub fn from(buf: &'a [u8]) -> Self {
+impl Dictionary {
+    pub fn from(buf: Vec<u8>) -> Self {
         Self(buf)
     }
 
@@ -55,7 +56,7 @@ impl<'a> Dictionary<'a> {
     }
 }
 
-impl<'a> fmt::Debug for Dictionary<'a> {
+impl fmt::Debug for Dictionary {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let iter = self.0.split(|item| *item == '\n' as u8);
         for pair in iter {

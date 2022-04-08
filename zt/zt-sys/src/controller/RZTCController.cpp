@@ -58,11 +58,23 @@ void RZTCController::sendConfig(
 	_sender->ncSendConfig(nwid, requestPacketId, destAddr, nc, sendLegacyFormat);
 }
 
+void RZTCController::sendError(
+	uint64_t nwid,
+	uint64_t requestPacketId,
+	const Address &destAddr,
+	NetworkController::ErrorCode errorCode,
+	const void *errorData,
+	unsigned int errorDataSize)
+{
+	_sender->ncSendError(nwid, requestPacketId, destAddr, errorCode, errorData, errorDataSize);
+}
+
 } // namespace ZeroTier
 
 extern "C" {
 
-enum RZTC_ResultCode RZTC_Controller_new(RZTC_Controller **controller,void *uptr,const struct RZTC_Controller_Callbacks *cbs) {
+enum RZTC_ResultCode RZTC_Controller_new(RZTC_Controller **controller,void *uptr,const struct RZTC_Controller_Callbacks *cbs)
+{
 	*controller = (RZTC_Controller*)0;
 	try {
 		*controller = reinterpret_cast<RZTC_Controller*>(new ZeroTier::RZTCController(uptr,cbs));
@@ -76,13 +88,21 @@ enum RZTC_ResultCode RZTC_Controller_new(RZTC_Controller **controller,void *uptr
 	}
 }
 
-void RZTC_Controller_delete(RZTC_Controller *controller) {
+void RZTC_Controller_delete(RZTC_Controller *controller)
+{
 	try {
 		delete (reinterpret_cast<ZeroTier::RZTCController*>(controller));
 	} catch ( ... ) {}
 }
 
-void RZTC_Controller_sendConfig(RZTC_Controller *controller,uint64_t nwid,uint64_t requestPacketId,uint64_t dest,const void *nc,bool legacy) {
+void RZTC_Controller_sendConfig(
+	RZTC_Controller *controller,
+	uint64_t nwid,
+	uint64_t requestPacketId,
+	uint64_t dest,
+	const void *nc,
+	bool legacy)
+{
 	try {
 		ZeroTier::Address *destAddr = new ZeroTier::Address(dest);
 		reinterpret_cast<ZeroTier::RZTCController*>(controller)->sendConfig(
@@ -91,6 +111,28 @@ void RZTC_Controller_sendConfig(RZTC_Controller *controller,uint64_t nwid,uint64
 			reinterpret_cast<const ZeroTier::Address&>(destAddr),
 			reinterpret_cast<const ZeroTier::NetworkConfig&>(nc),
 			legacy);
+		delete destAddr;
+	} catch ( ... ) {}
+}
+
+void RZTC_Controller_sendError(
+	RZTC_Controller *controller,
+	uint64_t nwid,
+	uint64_t requestPacketId,
+	uint64_t dest,
+	enum RZTC_NetworkErrorCode errorCode,
+	const void *errorData,
+	unsigned int errorDataSize)
+{
+	try {
+		ZeroTier::Address *destAddr = new ZeroTier::Address(dest);
+		reinterpret_cast<ZeroTier::RZTCController*>(controller)->sendError(
+			nwid,
+			requestPacketId,
+			reinterpret_cast<const ZeroTier::Address&>(destAddr),
+			static_cast<ZeroTier::NetworkController::ErrorCode>(errorCode),
+			errorData,
+			errorDataSize);
 		delete destAddr;
 	} catch ( ... ) {}
 }

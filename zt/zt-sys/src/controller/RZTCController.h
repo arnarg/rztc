@@ -50,11 +50,22 @@ enum RZTC_ResultCode
 	RZTC_RESULT_FATAL_ERROR_INTERNAL = 102,
 };
 
-RZTC_API enum RZTC_ResultCode RZTC_Controller_new(RZTC_Controller **controller,void *uptr,const struct RZTC_Controller_Callbacks *cbs);
+enum RZTC_NetworkErrorCode
+{
+	NC_ERROR_NONE = 0,
+	NC_ERROR_OBJECT_NOT_FOUND = 1,
+	NC_ERROR_ACCESS_DENIED = 2,
+	NC_ERROR_INTERNAL_SERVER_ERROR = 3,
+	NC_ERROR_AUTHENTICATION_REQUIRED = 4
+};
 
-RZTC_API void RZTC_Controller_delete(RZTC_Controller *controller);
+enum RZTC_ResultCode RZTC_Controller_new(RZTC_Controller **controller,void *uptr,const struct RZTC_Controller_Callbacks *cbs);
 
-RZTC_API void RZTC_Controller_sendConfig(RZTC_Controller *controller,uint64_t nwid,uint64_t requestPacketId,uint64_t dest,const void *nc,bool legacy);
+void RZTC_Controller_delete(RZTC_Controller *controller);
+
+void RZTC_Controller_sendConfig(RZTC_Controller *controller,uint64_t nwid,uint64_t requestPacketId,uint64_t dest,const void *nc,bool legacy);
+
+void RZTC_Controller_sendError(RZTC_Controller *controller,uint64_t nwid,uint64_t requestPacketId,uint64_t dest,enum RZTC_NetworkErrorCode errorCode,const void* errorData, unsigned int errorDataSize);
 
 #ifdef __cplusplus
 } // extern "C"

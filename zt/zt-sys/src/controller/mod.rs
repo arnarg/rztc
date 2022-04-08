@@ -52,6 +52,12 @@ pub const RZTC_ResultCode_RZTC_RESULT_FATAL_ERROR_OUT_OF_MEMORY: RZTC_ResultCode
 pub const RZTC_ResultCode_RZTC_RESULT_FATAL_ERROR_DATA_STORE_FAILED: RZTC_ResultCode = 101;
 pub const RZTC_ResultCode_RZTC_RESULT_FATAL_ERROR_INTERNAL: RZTC_ResultCode = 102;
 pub type RZTC_ResultCode = ::std::os::raw::c_uint;
+pub const RZTC_NetworkErrorCode_NC_ERROR_NONE: RZTC_NetworkErrorCode = 0;
+pub const RZTC_NetworkErrorCode_NC_ERROR_OBJECT_NOT_FOUND: RZTC_NetworkErrorCode = 1;
+pub const RZTC_NetworkErrorCode_NC_ERROR_ACCESS_DENIED: RZTC_NetworkErrorCode = 2;
+pub const RZTC_NetworkErrorCode_NC_ERROR_INTERNAL_SERVER_ERROR: RZTC_NetworkErrorCode = 3;
+pub const RZTC_NetworkErrorCode_NC_ERROR_AUTHENTICATION_REQUIRED: RZTC_NetworkErrorCode = 4;
+pub type RZTC_NetworkErrorCode = ::std::os::raw::c_uint;
 extern "C" {
     pub fn RZTC_Controller_new(
         controller: *mut *mut RZTC_Controller,
@@ -70,5 +76,16 @@ extern "C" {
         dest: u64,
         nc: *const ::std::os::raw::c_void,
         legacy: bool,
+    );
+}
+extern "C" {
+    pub fn RZTC_Controller_sendError(
+        controller: *mut RZTC_Controller,
+        nwid: u64,
+        requestPacketId: u64,
+        dest: u64,
+        errorCode: RZTC_NetworkErrorCode,
+        errorData: *const ::std::os::raw::c_void,
+        errorDataSize: ::std::os::raw::c_uint,
     );
 }

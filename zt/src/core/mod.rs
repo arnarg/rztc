@@ -133,7 +133,7 @@ impl Node {
     /// Perform periodic background operations
     ///
     /// Returns next deadline when it should run in milliseconds since epoch
-    pub fn process_background_tasks(&self, phy: &dyn PhyProvider) -> Fallible<i64> {
+    pub fn process_background_tasks(&mut self, phy: &dyn PhyProvider) -> Fallible<i64> {
         maybe_init!(self);
 
         let now = SystemTime::now().duration_since(UNIX_EPOCH).expect("unable to get time in millis");
@@ -169,6 +169,11 @@ impl Node {
         // In wire_packet_send_function I'm only dereferncing the wrapper pointer
         // not taking ownership of the data.
         unsafe { Box::from_raw(phy_wrapper_ptr) };
+
+        // Run controller background tasks
+        if let Some(controller) = &mut self.controller {
+            controller.process_background_tasks().unwrap();
+        }
 
         match ret {
             0 => Ok(next),
@@ -332,4 +337,5 @@ pub trait PhyProvider {
 
 pub trait Controller {
     fn init_controller(&self) -> Fallible<*const ()>;
+    fn process_background_tasks(&mut self) -> Fallible<()>;
 }
