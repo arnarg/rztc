@@ -44,17 +44,17 @@ impl Controller {
 
     pub fn process_request(&self, req: &NetworkRequest) {
         // Crashes!
-        // unsafe {
-        //     RZTC_Controller_sendError(
-        //         self.rztc_controller,
-        //         req.nwid,
-        //         req.packet_id,
-        //         req.identity,
-        //         error::NetworkError::AccessDenied as u32,
-        //         0 as *const std::ffi::c_void,
-        //         0
-        //     );
-        // }
+        unsafe {
+            RZTC_Controller_sendError(
+                self.rztc_controller,
+                req.nwid,
+                req.packet_id,
+                req.identity,
+                error::NetworkError::NotFound as u32,
+                0 as *const std::ffi::c_void,
+                0
+            );
+        }
     }
 }
 

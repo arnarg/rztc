@@ -15,6 +15,7 @@ use pnet_sys::{addr_to_sockaddr, sockaddr_to_addr};
 use libc::sockaddr_storage;
 use num_traits::FromPrimitive;
 use failure::Fallible;
+use std::collections::VecDeque;
 
 macro_rules! maybe_init {
     ( $a:expr ) => {
@@ -57,11 +58,19 @@ macro_rules! log_packet {
     };
 }
 
+#[derive(Clone)]
+pub struct WirePacket {
+    socket: i64,
+    address: SocketAddr,
+    buffer: Vec<u8>,
+}
+
 pub struct Node {
     zt_node: *mut ZT_Node,
     online: Cell<bool>,
     config_provider: Box<dyn ConfigurationProvider>,
     controller: Option<Box<dyn Controller>>,
+    packet_queue: Box<VecDeque<WirePacket>>,
 }
 
 impl Node {
@@ -72,6 +81,7 @@ impl Node {
             online: Cell::new(false),
             config_provider: conf_provider,
             controller: None,
+            packet_queue: Box::new(VecDeque::new()),
         })
     }
 
@@ -170,6 +180,17 @@ impl Node {
         // not taking ownership of the data.
         unsafe { Box::from_raw(phy_wrapper_ptr) };
 
+        // Process queued packets
+        while self.packet_queue.len() > 0 {
+            match self.packet_queue.pop_front() {
+                Some(packet) => {
+                    println!("sending packet!");
+                    self.on_wire_packet(phy, &packet.buffer[..], packet.socket, packet.address);
+                },
+                None => println!("no item in queue"),
+            }
+        }
+
         // Run controller background tasks
         if let Some(controller) = &mut self.controller {
             controller.process_background_tasks().unwrap();
@@ -246,6 +267,17 @@ impl Node {
                 None => Err(FatalError::Internal.into()),
             },
         }
+    }
+
+    pub fn enqueue_wire_packet(&mut self, buf: &[u8], socket: i64, addr: SocketAddr) -> Fallible<()> {
+        println!("queueing packet!");
+        let packet = WirePacket {
+            socket: socket,
+            address: addr,
+            buffer: Vec::from(buf),
+        };
+        (&mut self.packet_queue).push_back(packet);
+        Ok(())
     }
 
     /// Returns online status of node.

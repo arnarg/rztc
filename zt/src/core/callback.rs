@@ -24,6 +24,12 @@ macro_rules! to_node {
     };
 }
 
+macro_rules! to_mut_node {
+    ( $a:expr ) => {
+        unsafe { &mut *($a as *mut Node) }
+    };
+}
+
 // Callback functions expected by ZT_Node
 #[no_mangle]
 pub extern "C" fn state_put_function(
@@ -83,18 +89,30 @@ pub extern "C" fn wire_packet_send_function(
     _ttl: c_uint
 ) -> c_int {
     // Recover the rust native Node through the user pointer
-    let n: &Node = to_node!(node);
-    // Recover the rust native PhyWrapper through the thread pointer
-    let p: &PhyWrapper = unsafe {
-        &*(tptr as *const PhyWrapper)
-    };
-    // unsafe call! We have to trust that ZT_Node reports correct length
-    let buf = unsafe{ std::slice::from_raw_parts(data as *const u8, len as usize) };
+    let n: &mut Node = to_mut_node!(node);
     // converting C native sockaddr_storage to rust native SocketAddr
     let addr = unsafe{
         sockaddr_to_addr(&*address, std::mem::size_of::<sockaddr_storage>()).unwrap()
     };
-    !n.on_wire_packet(p.0, buf, socket, addr.clone()) as c_int
+    // unsafe call! We have to trust that ZT_Node reports correct length
+    let buf = unsafe{ std::slice::from_raw_parts(data as *const u8, len as usize) };
+    // Usually a thread pointer will be passed from C which should contain our PhyWrapper
+    // (see Node.process_wire_packet()). But when the node has a controller, any responses
+    // coming from the controller will not pass any thread pointer.
+    // In those cases we enqueue the packet for processing later. This is more expensive
+    // as the C code owns the buffer memory so if we want to store it for later we have to
+    // copy the entire buffer data. This might not be terribly expensive to do once in a
+    // while (controller responses) but we certainly don't want to do this for every packet.
+    if !tptr.is_null() {
+        // Recover the rust native PhyWrapper through the thread pointer
+        let p: &PhyWrapper = unsafe {
+            &*(tptr as *const PhyWrapper)
+        };
+        !n.on_wire_packet(p.0, buf, socket, addr.clone()) as c_int
+    } else {
+        n.enqueue_wire_packet(buf, socket, addr.clone());
+        0
+    }
 }
 
 #[no_mangle]
