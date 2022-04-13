@@ -276,7 +276,7 @@ impl Node {
             address: addr,
             buffer: Vec::from(buf),
         };
-        (&mut self.packet_queue).push_back(packet);
+        self.packet_queue.push_back(packet);
         Ok(())
     }
 

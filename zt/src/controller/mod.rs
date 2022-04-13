@@ -8,7 +8,7 @@ use zt_sys::controller::*;
 use crate::dictionary::Dictionary;
 use num_traits::FromPrimitive;
 use failure::Fallible;
-use queues::{Queue, IsQueue};
+use std::collections::VecDeque;
 
 #[derive(Debug, Clone)]
 pub struct NetworkRequest {
@@ -20,7 +20,7 @@ pub struct NetworkRequest {
 
 pub struct Controller {
     rztc_controller: *mut RZTC_Controller,
-    queue: Queue<NetworkRequest>,
+    queue: Box<VecDeque<NetworkRequest>>,
 }
 
 impl Controller {
@@ -28,13 +28,13 @@ impl Controller {
     pub fn new() -> Self {
         Self {
             rztc_controller: std::ptr::null_mut(),
-            queue: queue![],
+            queue: Box::new(VecDeque::new()),
         }
     }
 
     /// Gets called when node receives a network config request
     pub fn on_request(&mut self, nwid: u64, packet_id: u64, identity: u64, metadata: Dictionary) {
-        self.queue.add(NetworkRequest {
+        self.queue.push_back(NetworkRequest {
             nwid: nwid,
             packet_id: packet_id,
             identity: identity,
@@ -83,15 +83,14 @@ impl crate::core::Controller for Controller {
     }
 
     fn process_background_tasks(&mut self) -> Fallible<()> {
-        while self.queue.size() > 0 {
-            match self.queue.peek() {
-                Ok(req) => {
+        while self.queue.len() > 0 {
+            match self.queue.pop_front() {
+                Some(req) => {
                     println!("Got network config request from '{:x}' for network '{:x}'", req.identity, req.nwid);
                     self.process_request(&req);
                 },
-                Err(error) => println!("unable to get request from queue: {}", error),
+                None => println!("no item in queue"),
             };
-            self.queue.remove();
         }
         Ok(())
     }
