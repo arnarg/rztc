@@ -1,6 +1,6 @@
 [package]
 name = "zt-sys"
-version = "1.8.6"
+version = "0.2.0"
 edition = "2021"
 build = "build.rs"
 
