@@ -26,6 +26,7 @@ impl NodeRunner {
     pub fn run(&mut self) -> Fallible<()> {
         let mut online = self.node.is_online();
         let mut next: i64 = 0;
+
         loop {
             // Poll sockets for incoming packets
             if let Err(error) = self.phy.poll(&self.node) {
@@ -44,7 +45,6 @@ impl NodeRunner {
             }
 
             let node_online = self.node.is_online();
-            //println!("{}", node_online);
             if online != node_online {
                 println!("node status changed: {}", if node_online { "online" } else { "offline" });
                 online = node_online;
@@ -55,9 +55,12 @@ impl NodeRunner {
 
 fn main() {
     let file_config = FileConfig::new("/tmp/rztc/identity.secret");
+
     let mut node = Node::new(Box::new(file_config)).unwrap();
     node.register_controller(Box::new(Controller::new())).unwrap();
+
     println!("libzerotierone v{}", node.version());
+
     let phy = Phy::new(9993).unwrap();
     let mut runner = NodeRunner::new(node, phy);
 

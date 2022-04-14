@@ -50,7 +50,7 @@ public:
 		uint64_t nwid,
 		uint64_t requestPacketId,
 		const Address &destAddr,
-		const NetworkConfig &nc,
+		const char *nc,
 		bool sendLegacyFormat);
 
 	virtual void sendError(

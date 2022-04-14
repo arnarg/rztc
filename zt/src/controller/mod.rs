@@ -10,6 +10,8 @@ use num_traits::FromPrimitive;
 use failure::Fallible;
 use std::collections::VecDeque;
 
+const ZT_NETWORKCONFIG_DICT_CAPACITY: usize = 484456;
+
 #[derive(Debug, Clone)]
 pub struct NetworkRequest {
     pub nwid: u64,
@@ -43,15 +45,14 @@ impl Controller {
     }
 
     pub fn process_request(&self, req: &NetworkRequest) {
-        // Crashes!
         unsafe {
             RZTC_Controller_sendError(
                 self.rztc_controller,
                 req.nwid,
                 req.packet_id,
                 req.identity,
-                error::NetworkError::NotFound as u32,
-                0 as *const std::ffi::c_void,
+                error::NetworkError::AccessDenied as u32,
+                std::ptr::null(),
                 0
             );
         }

@@ -280,6 +280,32 @@ impl Node {
         Ok(())
     }
 
+    pub fn add_local_interface_address(&self, address: &SocketAddr) -> Fallible<()> {
+        unsafe {
+            use std::alloc::{alloc, dealloc, Layout};
+
+            let layout = Layout::new::<sockaddr_storage>();
+            let ptr = alloc(layout);
+            let sockaddr = &mut *(ptr as *mut sockaddr_storage);
+
+            addr_to_sockaddr(*address, sockaddr);
+
+            let res = ZT_Node_addLocalInterfaceAddress(self.zt_node as *mut ZT_Node, sockaddr);
+
+            dealloc(ptr, layout);
+            match res != 0 {
+                true => Ok(()),
+                false => Err(FatalError::Internal.into()),
+            }
+        }
+    }
+
+    pub fn clear_local_interface_addresses(&self) {
+        unsafe {
+            ZT_Node_clearLocalInterfaceAddresses(self.zt_node as *mut ZT_Node);
+        }
+    }
+
     /// Returns online status of node.
     pub fn is_online(&self) -> bool { self.online.get() }
 

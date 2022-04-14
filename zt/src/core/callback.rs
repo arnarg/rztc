@@ -164,10 +164,17 @@ pub extern "C" fn path_check_function(
     _n: *mut ZT_Node,
     _node: *mut c_void,
     _tptr: *mut c_void,
-    _ztaddress: u64,
-    _socket: c_int,
-    _address: *const sockaddr_storage
-) -> c_int {0}
+    ztaddress: u64,
+    socket: i64,
+    address: *const sockaddr_storage
+) -> c_int {
+    // converting C native sockaddr_storage to rust native SocketAddr
+    let addr = unsafe{
+        sockaddr_to_addr(&*address, std::mem::size_of::<sockaddr_storage>()).unwrap()
+    };
+    println!("path_check: {:x} {} {}", ztaddress, socket, addr);
+    1
+}
 
 // TODO: implement
 #[no_mangle]
@@ -175,7 +182,10 @@ pub extern "C" fn path_lookup_function(
     _n: *mut ZT_Node,
     _node: *mut c_void,
     _tptr: *mut c_void,
-    _ztaddress: u64,
-    _family: c_int,
-    _address: *const sockaddr_storage
-) -> c_int {0}
+    ztaddress: u64,
+    family: c_int,
+    _address: *mut sockaddr_storage
+) -> c_int {
+    println!("path_lookup: {:x} {}", ztaddress, family);
+    0
+}

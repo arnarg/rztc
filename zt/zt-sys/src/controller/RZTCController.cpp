@@ -7,6 +7,9 @@
 #include <Address.hpp>
 #include <InetAddress.hpp>
 #include <NetworkController.hpp>
+#include <Capability.hpp>
+#include <CertificateOfOwnership.hpp>
+#include <Tag.hpp>
 
 namespace ZeroTier {
 
@@ -52,10 +55,16 @@ void RZTCController::sendConfig(
 	uint64_t nwid,
 	uint64_t requestPacketId,
 	const Address &destAddr,
-	const NetworkConfig &nc,
+	const char *nc,
 	bool sendLegacyFormat)
 {
-	_sender->ncSendConfig(nwid, requestPacketId, destAddr, nc, sendLegacyFormat);
+	// Load network config from dictionary
+	const Dictionary<ZT_NETWORKCONFIG_DICT_CAPACITY> *data = new Dictionary<ZT_NETWORKCONFIG_DICT_CAPACITY>((const char*)nc);
+	NetworkConfig *netconf = new NetworkConfig();
+	netconf->fromDictionary(reinterpret_cast<const Dictionary<ZT_NETWORKCONFIG_DICT_CAPACITY>&>(*data));
+	_sender->ncSendConfig(nwid, requestPacketId, destAddr, reinterpret_cast<const NetworkConfig&>(nc), sendLegacyFormat);
+	delete netconf;
+	delete data;
 }
 
 void RZTCController::sendError(
@@ -109,7 +118,7 @@ void RZTC_Controller_sendConfig(
 			nwid,
 			requestPacketId,
 			reinterpret_cast<const ZeroTier::Address&>(destAddr),
-			reinterpret_cast<const ZeroTier::NetworkConfig&>(nc),
+			static_cast<const char*>(nc),
 			legacy);
 		delete destAddr;
 	} catch ( ... ) {}
