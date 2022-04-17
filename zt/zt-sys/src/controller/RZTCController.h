@@ -11,6 +11,12 @@ extern "C" {
 
 typedef void RZTC_Controller;
 
+typedef void (*RZTC_initCallback)(
+	RZTC_Controller *, // Controller reference
+	void *,            // User pointer, will be used for referencing rust native Controller
+	const void *,      // Signing key
+	uint64_t);         // Signing key length
+
 typedef void (*RZTC_networkRequestCallback)(
 	RZTC_Controller *,               // Controller reference
 	void *,                          // User pointer, will be used for referencing rust native Controller
@@ -18,10 +24,12 @@ typedef void (*RZTC_networkRequestCallback)(
 	const struct sockaddr_storage *, // Request address
 	uint64_t,                        // Packet ID
 	uint64_t,                        // Identity address
+	const void *,                    // Identity public key
 	const void *,                    // Metadata dict
 	uint64_t);                       // Metadata max length
 
 struct RZTC_Controller_Callbacks {
+	RZTC_initCallback initCallback;
 	RZTC_networkRequestCallback networkRequestCallback;
 };
 

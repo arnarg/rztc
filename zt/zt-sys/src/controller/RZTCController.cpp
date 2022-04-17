@@ -26,10 +26,17 @@ RZTCController::~RZTCController()
 
 void RZTCController::init(const Identity &signingId,Sender *sender)
 {
-	char tmp[64];
+	char tmp[ZT_C25519_PUBLIC_KEY_LEN + ZT_C25519_PRIVATE_KEY_LEN];
 	_signingId = signingId;
 	_sender = sender;
-	_signingIdAddressString = signingId.address().toString(tmp);
+	C25519::Pair pair = _signingId.privateKeyPair();
+	memcpy(&tmp, &pair, sizeof(tmp));
+	_cbs.initCallback(
+		reinterpret_cast<RZTC_Controller*>(this),
+		_uptr,
+		(void *)&tmp,
+		sizeof(tmp)
+	);
 }
 
 void RZTCController::request(
@@ -46,6 +53,7 @@ void RZTCController::request(
 		reinterpret_cast<const struct sockaddr_storage*>(&fromAddr),
 		requestPacketId,
 		identity.address().toInt(),
+		static_cast<const void*>(&identity.publicKey().data),
 		reinterpret_cast<const void*>(&metaData),
 		ZT_NETWORKCONFIG_METADATA_DICT_CAPACITY
 	);

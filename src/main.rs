@@ -61,7 +61,7 @@ fn main() {
 
     println!("libzerotierone v{}", node.version());
 
-    let phy = Phy::new(9993).unwrap();
+    let phy = Phy::new(9994).unwrap();
     let mut runner = NodeRunner::new(node, phy);
 
     match runner.run() {

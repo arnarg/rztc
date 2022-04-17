@@ -4,6 +4,14 @@ use super::*;
 
 pub type __uint64_t = ::std::os::raw::c_ulong;
 pub type RZTC_Controller = ::std::os::raw::c_void;
+pub type RZTC_initCallback = ::std::option::Option<
+    unsafe extern "C" fn(
+        arg1: *mut RZTC_Controller,
+        arg2: *mut ::std::os::raw::c_void,
+        arg3: *const ::std::os::raw::c_void,
+        arg4: u64,
+    ),
+>;
 pub type RZTC_networkRequestCallback = ::std::option::Option<
     unsafe extern "C" fn(
         arg1: *mut RZTC_Controller,
@@ -13,19 +21,21 @@ pub type RZTC_networkRequestCallback = ::std::option::Option<
         arg5: u64,
         arg6: u64,
         arg7: *const ::std::os::raw::c_void,
-        arg8: u64,
+        arg8: *const ::std::os::raw::c_void,
+        arg9: u64,
     ),
 >;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct RZTC_Controller_Callbacks {
+    pub initCallback: RZTC_initCallback,
     pub networkRequestCallback: RZTC_networkRequestCallback,
 }
 #[test]
 fn bindgen_test_layout_RZTC_Controller_Callbacks() {
     assert_eq!(
         ::std::mem::size_of::<RZTC_Controller_Callbacks>(),
-        8usize,
+        16usize,
         concat!("Size of: ", stringify!(RZTC_Controller_Callbacks))
     );
     assert_eq!(
@@ -35,10 +45,22 @@ fn bindgen_test_layout_RZTC_Controller_Callbacks() {
     );
     assert_eq!(
         unsafe {
+            &(*(::std::ptr::null::<RZTC_Controller_Callbacks>())).initCallback as *const _ as usize
+        },
+        0usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(RZTC_Controller_Callbacks),
+            "::",
+            stringify!(initCallback)
+        )
+    );
+    assert_eq!(
+        unsafe {
             &(*(::std::ptr::null::<RZTC_Controller_Callbacks>())).networkRequestCallback as *const _
                 as usize
         },
-        0usize,
+        8usize,
         concat!(
             "Offset of field: ",
             stringify!(RZTC_Controller_Callbacks),

@@ -63,7 +63,6 @@ public:
 
 private:
 	Identity _signingId;
-	std::string _signingIdAddressString;
 	NetworkController::Sender *_sender;
 	void *_uptr;
 	RZTC_Controller_Callbacks _cbs;
