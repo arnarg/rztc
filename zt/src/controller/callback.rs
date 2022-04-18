@@ -75,8 +75,6 @@ pub extern "C" fn on_network_request(
         address: identity,
         public: pub_buf.clone(),
     };
-    // println!("{}", id.address);
-    // println!("{:?}", id.public);
 
     c.on_request(nwid, packet_id, id, dict);
 }
