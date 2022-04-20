@@ -18,6 +18,10 @@ pub enum DictionaryError {
 pub struct Dictionary(Vec<u8>);
 
 impl Dictionary {
+    pub fn new() -> Self {
+        Self(Vec::new())
+    }
+
     pub fn from(buf: Vec<u8>) -> Self {
         Self(buf)
     }
@@ -53,6 +57,35 @@ impl Dictionary {
             }
         };
         Err(DictionaryError::NotFound.into())
+    }
+
+    pub fn set_u64(&mut self, key: &str, value: u64) {
+        self.0.append(&mut format!("{}={:016x}\n", key, value).into_bytes());
+    }
+
+    pub fn set_str(&mut self, key: &str, value: &str) {
+        self.set_bytes(key, value.as_bytes());
+    }
+
+    pub fn set_bytes(&mut self, key: &str, value: &[u8]) {
+        self.0.append(&mut format!("{}=", key).into_bytes());
+        for &c in value {
+            match c {
+                0 =>  self.0.append(&mut "\\0".as_bytes().to_vec()),  // Binary 0
+                13 => self.0.append(&mut "\\r".as_bytes().to_vec()),  // \r
+                10 => self.0.append(&mut "\\n".as_bytes().to_vec()),  // \n
+                92 => self.0.append(&mut "\\\\".as_bytes().to_vec()), // \
+                61 => self.0.append(&mut "\\e".as_bytes().to_vec()),  // =
+                _ =>  self.0.push(c),
+            }
+        }
+        self.0.push(10); // \n
+    }
+
+    pub fn finalize(&self) -> Vec<u8> {
+        let mut buf = self.0.clone();
+        buf.push(0);
+        buf
     }
 }
 

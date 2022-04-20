@@ -3,6 +3,8 @@
 mod callback;
 mod error;
 mod identity;
+mod certificate;
+mod networkconfig;
 
 use callback::*;
 use zt_sys::controller::*;
