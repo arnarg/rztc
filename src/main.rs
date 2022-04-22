@@ -1,7 +1,11 @@
 extern crate hex;
+extern crate serde;
+extern crate serde_yaml;
+extern crate clap;
 
 mod phy;
 mod identity;
+mod config;
 
 use std::time::{SystemTime, UNIX_EPOCH};
 use zt::core::Node;
@@ -9,6 +13,7 @@ use zt::controller::Controller;
 use phy::Phy;
 use identity::IdentityState;
 use failure::Fallible;
+use clap::Parser;
 
 pub struct NodeRunner {
     node: Node,
@@ -53,19 +58,40 @@ impl NodeRunner {
     }
 }
 
-fn main() {
-    let identity_state = IdentityState::new("/tmp/rztc/identity.secret");
+fn run(conf: config::Config) -> Fallible<()> {
+    let identity_state = IdentityState::new(conf.identity_path.as_str());
 
-    let mut node = Node::new(Box::new(identity_state)).unwrap();
-    node.register_controller(Box::new(Controller::new())).unwrap();
+    let mut node = Node::new(Box::new(identity_state))?;
+    node.register_controller(Box::new(Controller::new()))?;
 
     println!("libzerotierone v{}", node.version());
 
-    let phy = Phy::new(9994).unwrap();
+    let phy = Phy::new(conf.port, conf.secondary_port).unwrap();
     let mut runner = NodeRunner::new(node, phy);
 
-    match runner.run() {
-        Err(error) => println!("runner exited with error: {}", error),
-        Ok(_) => (),
-    };
+    runner.run()?;
+
+    Ok(())
+}
+
+/// ZeroTier network controller
+#[derive(Parser, Debug)]
+#[clap(author, version, about, long_about = None)]
+struct Args {
+    /// Path to config file
+    #[clap(short, long)]
+    config: String,
+}
+
+fn main() -> Fallible<()> {
+    let args = Args::parse();
+
+    let conf: config::Config = serde_yaml::from_str(
+		&*std::fs::read_to_string(args.config.as_str())
+			.expect(&format!("Could not open file {}", args.config)))
+		.expect("Could not parse the configuration yaml file");
+
+    run(conf)?;
+
+    Ok(())
 }

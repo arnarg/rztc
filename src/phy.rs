@@ -18,9 +18,9 @@ pub struct Phy {
 }
 
 impl Phy {
-    pub fn new(port: u32) -> Fallible<Phy> {
+    pub fn new(port: u16, secondary_port: u16) -> Fallible<Phy> {
         let mut main = UdpSocket::bind(format!("0.0.0.0:{}", port).parse()?)?;
-        let mut secondary = UdpSocket::bind(format!("0.0.0.0:{}", port+20001).parse()?)?;
+        let mut secondary = UdpSocket::bind(format!("0.0.0.0:{}", secondary_port).parse()?)?;
         let poll = Poll::new()?;
 
         poll.registry().register(&mut main, MAIN, Interest::READABLE)?;
