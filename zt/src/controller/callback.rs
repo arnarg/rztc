@@ -14,6 +14,7 @@ macro_rules! to_controller {
 pub extern "C" fn init_controller(
     _rztc_controller: *mut RZTC_Controller,
     controller: *mut std::os::raw::c_void,
+    id: u64,
     kp: *const std::os::raw::c_void,
     kp_len: u64
 ) {
@@ -41,7 +42,7 @@ pub extern "C" fn init_controller(
     keys[..SECRET_KEY_LENGTH].copy_from_slice(&buf[96..128]);
     keys[SECRET_KEY_LENGTH..].copy_from_slice(&buf[32..64]);
     let keypair = Keypair::from_bytes(&keys[..]).unwrap();
-    c.set_keypair(keypair);
+    c.set_keypair(id, keypair);
 }
 
 #[no_mangle]
@@ -75,6 +76,7 @@ pub extern "C" fn on_network_request(
         address: identity,
         public: pub_buf.clone(),
     };
+
 
     c.on_request(nwid, packet_id, id, dict);
 }

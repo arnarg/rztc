@@ -63,6 +63,10 @@ impl Dictionary {
         self.0.append(&mut format!("{}={:016x}\n", key, value).into_bytes());
     }
 
+    pub fn set_bool(&mut self, key: &str, value: bool) {
+        self.0.append(&mut format!("{}={}\n", key, if value { 1 } else { 0 }).into_bytes());
+    }
+
     pub fn set_str(&mut self, key: &str, value: &str) {
         self.set_bytes(key, value.as_bytes());
     }

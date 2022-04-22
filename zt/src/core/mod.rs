@@ -25,6 +25,18 @@ macro_rules! maybe_init {
     }
 }
 
+macro_rules! handle_res {
+    ( $a:expr, $b:expr ) => {
+        match $a {
+            0 => Ok($b),
+            _ => match FatalError::from_u32($a) {
+                Some(err) => Err(err.into()),
+                None => Err(FatalError::Internal.into()),
+            },
+        }
+    }
+}
+
 macro_rules! log_packet {
     ( $a:expr ) => {
         if $a.len() > 20 {
@@ -68,18 +80,18 @@ pub struct WirePacket {
 pub struct Node {
     zt_node: *mut ZT_Node,
     online: Cell<bool>,
-    config_provider: Box<dyn ConfigurationProvider>,
+    state_provider: Box<dyn StateProvider>,
     controller: Option<Box<dyn Controller>>,
     packet_queue: Box<VecDeque<WirePacket>>,
 }
 
 impl Node {
     /// Creates an instance of node
-    pub fn new(conf_provider: Box<dyn ConfigurationProvider>) -> Fallible<Node> {
+    pub fn new(conf_provider: Box<dyn StateProvider>) -> Fallible<Node> {
         Ok(Self {
             zt_node: std::ptr::null_mut(),
             online: Cell::new(false),
-            config_provider: conf_provider,
+            state_provider: conf_provider,
             controller: None,
             packet_queue: Box::new(VecDeque::new()),
         })
@@ -131,13 +143,7 @@ impl Node {
                 now
             )
         };
-        match ret {
-            0 => Ok(()),
-            _ => match FatalError::from_u32(ret) {
-                Some(err) => Err(err.into()),
-                None => Err(FatalError::Internal.into()),
-            },
-        }
+        handle_res!(ret, ())
     }
 
     /// Perform periodic background operations
@@ -184,7 +190,6 @@ impl Node {
         while self.packet_queue.len() > 0 {
             match self.packet_queue.pop_front() {
                 Some(packet) => {
-                    println!("sending packet!");
                     self.on_wire_packet(phy, &packet.buffer[..], packet.socket, packet.address);
                 },
                 None => println!("no item in queue"),
@@ -196,13 +201,7 @@ impl Node {
             controller.process_background_tasks().unwrap();
         }
 
-        match ret {
-            0 => Ok(next),
-            _ => match FatalError::from_u32(ret) {
-                Some(err) => Err(err.into()),
-                None => Err(FatalError::Internal.into()),
-            },
-        }
+        handle_res!(ret, next)
     }
 
     pub fn process_wire_packet(&self, phy: &dyn PhyProvider, buf: &[u8], len: usize, addr: &SocketAddr, socket: i64) -> Fallible<i64> {
@@ -260,24 +259,16 @@ impl Node {
         // not taking ownership of the data.
         unsafe { Box::from_raw(phy_wrapper_ptr) };
 
-        match ret {
-            0 => Ok(next),
-            _ => match FatalError::from_u32(ret) {
-                Some(err) => Err(err.into()),
-                None => Err(FatalError::Internal.into()),
-            },
-        }
+        handle_res!(ret, next)
     }
 
-    pub fn enqueue_wire_packet(&mut self, buf: &[u8], socket: i64, addr: SocketAddr) -> Fallible<()> {
-        println!("queueing packet!");
+    pub fn enqueue_wire_packet(&mut self, buf: &[u8], socket: i64, addr: SocketAddr) {
         let packet = WirePacket {
             socket: socket,
             address: addr,
             buffer: Vec::from(buf),
         };
         self.packet_queue.push_back(packet);
-        Ok(())
     }
 
     pub fn add_local_interface_address(&self, address: &SocketAddr) -> Fallible<()> {
@@ -325,7 +316,6 @@ impl Node {
             Event::Offline => self.online.set(false),
             _ => (),
         }
-        println!("Got event: {:?}", event);
     }
 
     // Gets called from C (through a callback wrapper) when a packet should be
@@ -344,13 +334,13 @@ impl Node {
     // Gets called from C (through a callback wrapper) when the node wants to
     // save state
     fn set_state(&self, object_type: StateObject, buf: &[u8]) {
-        let _ret = self.config_provider.set_state(object_type, buf);
+        let _ret = self.state_provider.set_state(object_type, buf);
     }
 
     // Gets called from C (through a callback wrapper) when the node wants to
     // get state
     fn get_state(&self, object_type: StateObject, buf: &mut [u8]) -> i32 {
-        if let Ok(value) = self.config_provider.get_state(object_type) {
+        if let Ok(value) = self.state_provider.get_state(object_type) {
             let len = value.len();
             buf[..len].copy_from_slice(&value);
             return len as i32;
@@ -381,7 +371,7 @@ impl Drop for Node {
     }
 }
 
-pub trait ConfigurationProvider {
+pub trait StateProvider {
     fn get_state(&self, object_type: StateObject) -> Fallible<Vec<u8>>;
     fn set_state(&self, object_type: StateObject, data: &[u8]) -> Fallible<()>;
 }

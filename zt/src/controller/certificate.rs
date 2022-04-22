@@ -1,7 +1,7 @@
 use crate::controller::identity::Identity;
 use serde::{Serialize, Deserialize};
-use bincode::{Options, DefaultOptions};
-use ed25519_dalek::{Keypair, Signature, Signer};
+use ed25519_dalek::{Keypair, Signer};
+use sha2::Digest;
 use failure::Fallible;
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -22,11 +22,11 @@ struct Qualifier {
 pub struct CertificateOfMembership {
     qualifiers: Vec<Qualifier>,
     signer: u64,
-    signature: Option<Signature>,
+    signature: [u8; 96],
 }
 
 impl CertificateOfMembership {
-    pub fn new(ts: u64, delta: u64, nwid: u64, identity: Identity) -> Self {
+    pub fn new(ts: u64, delta: u64, nwid: u64, identity: &Identity) -> Self {
         let mut qualifiers = Vec::new();
         qualifiers.push(Qualifier {
             id: QualifierId::Timestamp as u64,
@@ -62,11 +62,11 @@ impl CertificateOfMembership {
         Self {
             qualifiers: qualifiers,
             signer: 0,
-            signature: None,
+            signature: [0u8; 96],
         }
     }
 
-    pub fn sign(&mut self, signer: u64, key: Keypair) {
+    pub fn sign(&mut self, signer: u64, key: &Keypair) {
         let mut buf: Vec<u8> = Vec::new();
         for q in &self.qualifiers {
             buf.append(&mut u64::to_be_bytes(q.id).to_vec());
@@ -74,8 +74,11 @@ impl CertificateOfMembership {
             buf.append(&mut u64::to_be_bytes(q.max_delta).to_vec());
         }
 
-        let signature = key.sign(&buf);
-        self.signature = Some(signature);
+        let digest = sha2::Sha512::digest(&buf);
+        let signature = key.sign(&buf[..32]).to_bytes();
+
+        self.signature[..32].copy_from_slice(&digest[..32]);
+        self.signature[32..].copy_from_slice(&signature);
         self.signer = signer;
     }
 
@@ -105,8 +108,8 @@ impl CertificateOfMembership {
             out.append(&mut u64::to_be_bytes(q.max_delta).to_vec());
         }
         out.append(&mut u64::to_be_bytes(self.signer)[3..].to_vec());
-        if let Some(signature) = self.signature {
-            out.append(&mut signature.to_bytes().to_vec());
+        if self.signer != 0 {
+            out.append(&mut self.signature.to_vec());
         }
         Ok(out)
     }
@@ -122,23 +125,21 @@ pub mod tests {
             1650367222104,
             123456,
             5124095572525857, // 0x12345678654321
-            Identity {
+            &Identity {
                 address: 589744919974,
                 public: hex::decode("2ca7d749ec20a750b6189cf1f51a5f7db67bbed6218cbae506946c01e267cd05d6e4bd580af21231b7edd03eb04a086a43a14cfca67b19a1cc4484e5ad142034")?.try_into().unwrap(),
             },
         );
 
-        let expect = "010007000000000000000000000180418d5158000000000001e2400000000000000001001234567865432100000000000000000000000000000002000000894f8955a6ffffffffffffffff0000000000000003c479b54bc47ea678ffffffffffffffff000000000000000432998ed6255eadf2ffffffffffffffff00000000000000053a43d68294a4bdffffffffffffffffff0000000000000006566323366e1bc33effffffffffffffff";
+        // TODO: verify signing data is correct
+        let expect = "010007000000000000000000000180418d5158000000000001e2400000000000000001001234567865432100000000000000000000000000000002000000894f8955a6ffffffffffffffff0000000000000003c479b54bc47ea678ffffffffffffffff000000000000000432998ed6255eadf2ffffffffffffffff00000000000000053a43d68294a4bdffffffffffffffffff0000000000000006566323366e1bc33effffffffffffffffaabbccddee662ab1c84a83f53211b6f0ccf764017b871670eea12e07a1d7888c9e60c29b8e29ae3d4a215684c7facf4cf614d9178eb5cf6b0c6a718dabc50aa728b4249c89c48b7048bfde6bf238a4e711af0362fdd44fdeb3de047359782c8959b8d36806";
 
-        let mut csprng = rand::rngs::OsRng{};
-        let keypair: Keypair = Keypair::generate(&mut csprng);
+        let keypair_hex = "6b7ec6bebb42159e30f8fe843c1e2928372a8787a098d39f41568282a0c89637f82dc186e19f50b01e7fa93637683919de6e4be7df1a3404a9f21ba16d273f94";
+        let keypair: Keypair = Keypair::from_bytes(&hex::decode(keypair_hex)?)?;
 
-        com.sign(0x65bf339e0b, keypair);
-
-        println!("{}", hex::encode(com.serialize()?));
+        com.sign(0xaabbccddee, &keypair);
 
         assert_eq!(com.serialize()?, hex::decode(expect)?);
-
 
         Ok(())
     }

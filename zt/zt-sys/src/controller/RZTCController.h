@@ -14,6 +14,7 @@ typedef void RZTC_Controller;
 typedef void (*RZTC_initCallback)(
 	RZTC_Controller *, // Controller reference
 	void *,            // User pointer, will be used for referencing rust native Controller
+	uint64_t,          // Signing identity address
 	const void *,      // Signing key
 	uint64_t);         // Signing key length
 

@@ -8,8 +8,9 @@ pub type RZTC_initCallback = ::std::option::Option<
     unsafe extern "C" fn(
         arg1: *mut RZTC_Controller,
         arg2: *mut ::std::os::raw::c_void,
-        arg3: *const ::std::os::raw::c_void,
-        arg4: u64,
+        arg3: u64,
+        arg4: *const ::std::os::raw::c_void,
+        arg6: u64,
     ),
 >;
 pub type RZTC_networkRequestCallback = ::std::option::Option<

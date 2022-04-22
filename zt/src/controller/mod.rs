@@ -10,12 +10,11 @@ use callback::*;
 use zt_sys::controller::*;
 use crate::dictionary::Dictionary;
 use crate::controller::identity::Identity;
+use crate::controller::networkconfig::NetworkConfig;
 use num_traits::FromPrimitive;
 use failure::Fallible;
 use std::collections::VecDeque;
 use ed25519_dalek::Keypair;
-
-const ZT_NETWORKCONFIG_DICT_CAPACITY: usize = 484456;
 
 #[derive(Debug, Clone)]
 pub struct NetworkRequest {
@@ -27,6 +26,7 @@ pub struct NetworkRequest {
 
 pub struct Controller {
     rztc_controller: *mut RZTC_Controller,
+    id: u64,
     keypair: Option<Keypair>,
     queue: Box<VecDeque<NetworkRequest>>,
 }
@@ -36,13 +36,14 @@ impl Controller {
     pub fn new() -> Self {
         Self {
             rztc_controller: std::ptr::null_mut(),
+            id: 0,
             keypair: None,
             queue: Box::new(VecDeque::new()),
         }
     }
 
     /// Gets called when node receives a network config request
-    pub fn on_request(&mut self, nwid: u64, packet_id: u64, identity: Identity, metadata: Dictionary) {
+    fn on_request(&mut self, nwid: u64, packet_id: u64, identity: Identity, metadata: Dictionary) {
         self.queue.push_back(NetworkRequest {
             nwid: nwid,
             packet_id: packet_id,
@@ -52,20 +53,23 @@ impl Controller {
     }
 
     pub fn process_request(&self, req: &NetworkRequest) {
+        let mut nc = NetworkConfig::new("my-network-lab", req.nwid, &req.identity, 1).unwrap();
+        nc.sign(self.id, &self.keypair.as_ref().unwrap());
+        let buf = nc.serialize().unwrap();
         unsafe {
-            RZTC_Controller_sendError(
+            RZTC_Controller_sendConfig(
                 self.rztc_controller,
                 req.nwid,
                 req.packet_id,
                 req.identity.address,
-                error::NetworkError::AccessDenied as u32,
-                std::ptr::null(),
-                0
+                buf.as_ptr() as *const _,
+                false
             );
         }
     }
 
-    fn set_keypair(&mut self, keypair: Keypair) {
+    fn set_keypair(&mut self, id: u64, keypair: Keypair) {
+        self.id = id;
         self.keypair = Some(keypair);
     }
 }
@@ -107,4 +111,8 @@ impl crate::core::Controller for Controller {
         }
         Ok(())
     }
+}
+
+pub trait NetworkConfigProvider {
+    fn get_network_config(&self, identity: u64) -> Fallible<NetworkConfig>;
 }

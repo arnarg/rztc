@@ -1,15 +1,15 @@
 use std::cell::Cell;
-use zt::core::{ConfigurationProvider, StateObject, StateError};
+use zt::core::{StateProvider, StateObject, StateError};
 use failure::Fallible;
 
 const IDENTITY_LENGTH: usize = 270;
 
-pub struct FileConfig {
+pub struct IdentityState {
     identity_file: Box<String>,
     identity: Cell<[u8; IDENTITY_LENGTH]>,
 }
 
-impl FileConfig {
+impl IdentityState {
     pub fn new(identity_file: &str) -> Self {
         Self {
             identity_file: Box::new(identity_file.to_string()),
@@ -41,7 +41,7 @@ impl FileConfig {
     }
 }
 
-impl ConfigurationProvider for FileConfig {
+impl StateProvider for IdentityState {
     fn get_state(&self, object_type: StateObject) -> Fallible<Vec<u8>> {
         let res = match object_type {
             StateObject::PublicIdentity => Vec::from(&self.get_identity()?[..141]),
