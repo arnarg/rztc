@@ -15,6 +15,7 @@ use num_traits::FromPrimitive;
 use failure::Fallible;
 use std::collections::VecDeque;
 use ed25519_dalek::Keypair;
+use std::net::Ipv4Addr;
 
 #[derive(Debug, Clone)]
 pub struct NetworkRequest {
@@ -24,8 +25,28 @@ pub struct NetworkRequest {
     pub metadata: Box<Dictionary>,
 }
 
+#[derive(Debug, Clone)]
+pub struct Network {
+    pub name: String,
+    pub id: u32,
+    pub netmask: u16,
+    pub revision: u64,
+    pub public: bool,
+    pub broadcast: bool,
+    pub multicast_recipient_limit: u64,
+    pub mtu: u16,
+    pub members: Vec<Member>,
+}
+
+#[derive(Debug, Clone)]
+pub struct Member {
+    pub address: u64,
+    pub ip: Ipv4Addr,
+}
+
 pub struct Controller {
     rztc_controller: *mut RZTC_Controller,
+    networks: Vec<Network>,
     id: u64,
     keypair: Option<Keypair>,
     queue: Box<VecDeque<NetworkRequest>>,
@@ -36,6 +57,7 @@ impl Controller {
     pub fn new() -> Self {
         Self {
             rztc_controller: std::ptr::null_mut(),
+            networks: Vec::new(),
             id: 0,
             keypair: None,
             queue: Box::new(VecDeque::new()),
@@ -71,6 +93,10 @@ impl Controller {
     fn set_keypair(&mut self, id: u64, keypair: Keypair) {
         self.id = id;
         self.keypair = Some(keypair);
+    }
+
+    pub fn add_network(&mut self, network: Network) {
+        self.networks.push(network);
     }
 }
 

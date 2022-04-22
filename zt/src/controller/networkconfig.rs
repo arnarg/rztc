@@ -78,7 +78,7 @@ pub struct NetworkConfig {
 impl NetworkConfig {
     pub fn new(name: &str, nwid: u64, issued_to: &Identity, rev: u64) -> Fallible<Self> {
         let now = SystemTime::now().duration_since(UNIX_EPOCH)?;
-        let now: i64 = now.as_millis().try_into().unwrap();
+        let now: i64 = now.as_millis().try_into()?;
         Ok(Self {
             name: name.to_string(),
             nwid: nwid,

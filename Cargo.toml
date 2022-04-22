@@ -13,3 +13,5 @@ hex = "0.4"
 serde = { version = "1.0", features = ["derive"] }
 serde_yaml = "0.8"
 clap = { version = "3.1", features = ["derive"] }
+ipnetwork = "0.18"
+sha2 = "0.10"
