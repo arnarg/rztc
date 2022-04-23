@@ -11,13 +11,15 @@ use error::*;
 use zt_sys::controller::*;
 use crate::dictionary::Dictionary;
 use crate::controller::identity::Identity;
-use crate::controller::networkconfig::NetworkConfig;
+use crate::controller::certificate::CertificateOfMembership;
+use crate::controller::networkconfig::{NetworkConfig, NetworkType, TraceLevel};
 use num_traits::FromPrimitive;
 use failure::Fallible;
 use std::collections::VecDeque;
 use sha2::Digest;
 use ed25519_dalek::{Keypair, Signer, KEYPAIR_LENGTH};
 use std::net::Ipv4Addr;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 #[derive(Debug, Clone)]
 pub struct NetworkRequest {
@@ -44,6 +46,43 @@ pub struct Network {
 pub struct Member {
     pub address: u64,
     pub ip: Ipv4Addr,
+}
+
+impl Network {
+    fn to_network_config(&self, controller: u64, identity: &Identity) -> Fallible<NetworkConfig> {
+        // This little guy will be used to give the user the IP address once CertificateOfOwnership
+        // is implemented.
+        // TODO!
+        let _member = match self.members.iter().find(|m| m.address == identity.address) {
+            Some(m) => m,
+            None => return Err(NetworkError::NotFound.into()),
+        };
+
+        let now = SystemTime::now().duration_since(UNIX_EPOCH)?;
+        let now: i64 = now.as_millis().try_into()?;
+
+        let nwid = (controller << 24) | self.id as u64;
+        Ok(NetworkConfig {
+            name: self.name.clone(),
+            nwid: nwid,
+            timestamp: now,
+            credential_time_max_delta: 7200000,
+            rev: self.revision,
+            multicast_limit: 0,
+            network_type: if self.public { NetworkType::Public as u64 } else { NetworkType::Private as u64 },
+            issued_to: identity.address,
+            trace_target: 0,
+            trace_level: TraceLevel::Normal as u64,
+            flags: if self.broadcast { 2 } else { 0 },
+            mtu: self.mtu as u64,
+            com: CertificateOfMembership::new(
+                now as u64,
+                7200000,
+                nwid,
+                identity,
+            ),
+        })
+    }
 }
 
 pub struct Controller {
@@ -77,18 +116,57 @@ impl Controller {
     }
 
     pub fn process_request(&self, req: &NetworkRequest) {
-        let mut nc = NetworkConfig::new("my-network-lab", req.nwid, &req.identity, 1).unwrap();
-        nc.sign(self.id, self).expect("unable to sign network config");
-        let buf = nc.serialize().unwrap();
+        let mut nc = match self.get_network_config_for(req.nwid, &req.identity) {
+            Ok(nc) => nc,
+            Err(error) => {
+                println!("got error trying to find network: {}", error);
+                return;
+            },
+        };
+
+
+        match nc.sign(self.id, self) {
+            Ok(_) => (),
+            Err(error) => {
+                println!("unable to sign network config: {}", error);
+                return;
+            },
+        };
+
+        match self.send_config(req, &nc) {
+            Err(error) => println!("unable to send network config: {}", error),
+            Ok(_) => {},
+        }
+    }
+
+    fn send_config(&self, req: &NetworkRequest, nc: &NetworkConfig) -> Fallible<()> {
         unsafe {
             RZTC_Controller_sendConfig(
                 self.rztc_controller,
                 req.nwid,
                 req.packet_id,
                 req.identity.address,
-                buf.as_ptr() as *const _,
+                nc.serialize()?.as_ptr() as *const _,
                 false
             );
+        }
+
+        Ok(())
+    }
+
+    fn get_network_config_for(&self, nwid: u64, identity: &Identity) -> Fallible<NetworkConfig> {
+        let id: u32 = nwid as u32 & 0xffffff;
+
+        let network = match self.networks.iter().find(|n| n.id == id) {
+            Some(n) => n,
+            None => return Err(NetworkError::NotFound.into()),
+        };
+
+        match network.clone().to_network_config(self.id, identity) {
+            Ok(nc) => Ok(nc),
+            // Always return NotFound so unauthorized people
+            // don't know if they found a network.
+            Err(_) => Err(NetworkError::NotFound.into()),
         }
     }
 
@@ -99,6 +177,10 @@ impl Controller {
 
     pub fn add_network(&mut self, network: Network) {
         self.networks.push(network);
+    }
+
+    pub fn get_network_ids(&self) -> Vec<u64> {
+        self.networks.clone().iter_mut().map(|n| (self.id << 24) & n.id as u64).collect()
     }
 }
 

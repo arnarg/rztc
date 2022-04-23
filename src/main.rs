@@ -58,11 +58,23 @@ impl NodeRunner {
     }
 }
 
+fn init_controller(node: &mut Node, conf: &config::Config) -> Fallible<()> {
+    let mut controller = Controller::new();
+
+    for n in &conf.networks {
+        controller.add_network(n.clone().try_into()?);
+    }
+
+    node.register_controller(Box::new(controller))?;
+
+    Ok(())
+}
+
 fn run(conf: config::Config) -> Fallible<()> {
     let identity_state = IdentityState::new(conf.identity_path.as_str());
 
     let mut node = Node::new(Box::new(identity_state))?;
-    node.register_controller(Box::new(Controller::new()))?;
+    init_controller(&mut node, &conf)?;
 
     println!("libzerotierone v{}", node.version());
 

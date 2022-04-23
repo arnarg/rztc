@@ -101,9 +101,9 @@ void RZTCController::sendConfig(
 	bool sendLegacyFormat)
 {
 	// Load network config from dictionary
-	const Dictionary<ZT_NETWORKCONFIG_DICT_CAPACITY> *data = new Dictionary<ZT_NETWORKCONFIG_DICT_CAPACITY>(nc);
+	std::unique_ptr<Dictionary<ZT_NETWORKCONFIG_DICT_CAPACITY>> data(new Dictionary<ZT_NETWORKCONFIG_DICT_CAPACITY>(nc));
 	std::unique_ptr<NetworkConfig> netconf(new NetworkConfig());
-	netconf->fromDictionary(reinterpret_cast<const Dictionary<ZT_NETWORKCONFIG_DICT_CAPACITY>&>(*data));
+	netconf->fromDictionary(*(data.get()));
 
 	// Buffer<1024> *tmp = new Buffer<1024>();
 	// tmp->clear();
@@ -128,7 +128,6 @@ void RZTCController::sendConfig(
 
 
 	_sender->ncSendConfig(nwid, requestPacketId, destAddr, *(netconf.get()), sendLegacyFormat);
-	delete data;
 }
 
 void RZTCController::sendError(

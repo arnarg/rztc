@@ -11,14 +11,14 @@ pub struct Config {
     #[serde(default = "default_secondary_port")]
     pub secondary_port: u16,
     pub identity_path: String,
-    networks: Vec<Network>,
+    pub networks: Vec<Network>,
 }
 
 fn default_port() -> u16 { 9994 }
 fn default_secondary_port() -> u16 { 29995 }
 
 #[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
-struct Network {
+pub struct Network {
     name: String,
     id: Option<String>,
     #[serde(default = "default_revision")]

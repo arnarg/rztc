@@ -11,12 +11,15 @@ pub enum FatalError {
     Internal = RZTC_ResultCode_RZTC_RESULT_FATAL_ERROR_INTERNAL as isize,
 }
 
-#[derive(Debug, FromPrimitive)]
+#[derive(Debug, Fail, FromPrimitive)]
 pub enum NetworkError {
-    NoError = RZTC_NetworkErrorCode_NC_ERROR_NONE as isize,
+    #[fail(display = "network not found")]
     NotFound = RZTC_NetworkErrorCode_NC_ERROR_OBJECT_NOT_FOUND as isize,
+    #[fail(display = "access denied")]
     AccessDenied = RZTC_NetworkErrorCode_NC_ERROR_ACCESS_DENIED as isize,
+    #[fail(display = "internal server error")]
     InternalServerError = RZTC_NetworkErrorCode_NC_ERROR_INTERNAL_SERVER_ERROR as isize,
+    #[fail(display = "authentication required")]
     AuthenticationRequired = RZTC_NetworkErrorCode_NC_ERROR_AUTHENTICATION_REQUIRED as isize,
 }
 

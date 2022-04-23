@@ -59,20 +59,21 @@ pub enum TraceLevel {
     Insane = 30, // That is what they call it in the ZeroTierOne source code :)
 }
 
+#[derive(Debug)]
 pub struct NetworkConfig {
-    pub name: String,
-    pub nwid: u64,
-    pub timestamp: i64,
-    pub credential_time_max_delta: u64,
-    pub rev: u64,
-    pub multicast_limit: u64,
-    pub network_type: u64,
-    pub issued_to: u64,
-    pub trace_target: u64,
-    pub trace_level: u64,
-    pub flags: u64,
-    pub mtu: u64,
-    pub com: CertificateOfMembership,
+    pub(crate) name: String,
+    pub(crate) nwid: u64,
+    pub(crate) timestamp: i64,
+    pub(crate) credential_time_max_delta: u64,
+    pub(crate) rev: u64,
+    pub(crate) multicast_limit: u64,
+    pub(crate) network_type: u64,
+    pub(crate) issued_to: u64,
+    pub(crate) trace_target: u64,
+    pub(crate) trace_level: u64,
+    pub(crate) flags: u64,
+    pub(crate) mtu: u64,
+    pub(crate) com: CertificateOfMembership,
 }
 
 impl NetworkConfig {
