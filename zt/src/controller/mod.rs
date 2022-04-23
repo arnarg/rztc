@@ -29,7 +29,7 @@ pub struct NetworkRequest {
 pub struct Network {
     pub name: String,
     pub id: u32,
-    pub netmask: u16,
+    pub prefix: u8,
     pub revision: u64,
     pub public: bool,
     pub broadcast: bool,
