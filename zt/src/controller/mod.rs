@@ -7,6 +7,7 @@ mod certificate;
 mod networkconfig;
 
 use callback::*;
+use error::*;
 use zt_sys::controller::*;
 use crate::dictionary::Dictionary;
 use crate::controller::identity::Identity;
@@ -14,7 +15,8 @@ use crate::controller::networkconfig::NetworkConfig;
 use num_traits::FromPrimitive;
 use failure::Fallible;
 use std::collections::VecDeque;
-use ed25519_dalek::Keypair;
+use sha2::Digest;
+use ed25519_dalek::{Keypair, Signer, KEYPAIR_LENGTH};
 use std::net::Ipv4Addr;
 
 #[derive(Debug, Clone)]
@@ -76,7 +78,7 @@ impl Controller {
 
     pub fn process_request(&self, req: &NetworkRequest) {
         let mut nc = NetworkConfig::new("my-network-lab", req.nwid, &req.identity, 1).unwrap();
-        nc.sign(self.id, &self.keypair.as_ref().unwrap());
+        nc.sign(self.id, self).expect("unable to sign network config");
         let buf = nc.serialize().unwrap();
         unsafe {
             RZTC_Controller_sendConfig(
@@ -139,6 +141,37 @@ impl crate::core::Controller for Controller {
     }
 }
 
+
+
+impl ZeroTierSigner for Controller {
+    fn sign(&self, data: &[u8]) -> Fallible<[u8; 96]> {
+        // Data is signed by hashing the data using SHA-512
+        // and signing the first 32 bytes of it. The final
+        // signature is then constructed like this:
+        //
+        // |--           96           --|
+        // |--       64      --|-- 32 --|
+        // |-------------------|--------|
+        // | Ed25519 signature |  hash  |
+        // ------------------------------
+        match &self.keypair {
+            Some(keypair) => {
+                let mut signature = [0u8; 96];
+                let digest = &sha2::Sha512::digest(data)[..32];
+                let signed = keypair.sign(&digest).to_bytes();
+                signature[..KEYPAIR_LENGTH].copy_from_slice(&signed);
+                signature[KEYPAIR_LENGTH..].copy_from_slice(digest);
+                Ok(signature)
+            },
+            None => Err(SignatureError::NoKeypair.into()),
+        }
+    }
+}
+
 pub trait NetworkConfigProvider {
     fn get_network_config(&self, identity: u64) -> Fallible<NetworkConfig>;
+}
+
+pub trait ZeroTierSigner {
+    fn sign(&self, data: &[u8]) -> Fallible<[u8; 96]>;
 }

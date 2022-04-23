@@ -1,10 +1,10 @@
 #![allow(dead_code)]
 
+use crate::controller::ZeroTierSigner;
 use crate::controller::identity::Identity;
 use crate::controller::certificate::CertificateOfMembership;
 use crate::dictionary::Dictionary;
 use std::time::{SystemTime, UNIX_EPOCH};
-use ed25519_dalek::Keypair;
 use failure::Fallible;
 
 const NETWORKCONFIG_VERSION: u64 = 7;
@@ -128,8 +128,10 @@ impl NetworkConfig {
         Ok(dict.finalize())
     }
 
-    pub fn sign(&mut self, signing_id: u64, signing_keypair: &Keypair) {
-        self.com.sign(signing_id, signing_keypair);
+    pub fn sign(&mut self, identity: u64, signer: &dyn ZeroTierSigner) -> Fallible<()> {
+        self.com.sign(identity, signer)?;
+
+        Ok(())
     }
 }
 

@@ -19,3 +19,9 @@ pub enum NetworkError {
     InternalServerError = RZTC_NetworkErrorCode_NC_ERROR_INTERNAL_SERVER_ERROR as isize,
     AuthenticationRequired = RZTC_NetworkErrorCode_NC_ERROR_AUTHENTICATION_REQUIRED as isize,
 }
+
+#[derive(Debug, Fail, FromPrimitive)]
+pub enum SignatureError {
+    #[fail(display = "signer has no keypair")]
+    NoKeypair,
+}

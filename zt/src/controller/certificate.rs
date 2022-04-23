@@ -1,7 +1,6 @@
 use crate::controller::identity::Identity;
+use crate::controller::ZeroTierSigner;
 use serde::{Serialize, Deserialize};
-use ed25519_dalek::{Keypair, Signer, KEYPAIR_LENGTH};
-use sha2::Digest;
 use failure::Fallible;
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -66,22 +65,6 @@ impl CertificateOfMembership {
         }
     }
 
-    pub fn sign(&mut self, signer: u64, key: &Keypair) {
-        let mut buf: Vec<u8> = Vec::new();
-        for q in &self.qualifiers {
-            buf.append(&mut u64::to_be_bytes(q.id).to_vec());
-            buf.append(&mut u64::to_be_bytes(q.value).to_vec());
-            buf.append(&mut u64::to_be_bytes(q.max_delta).to_vec());
-        }
-
-        let digest: &[u8] = &sha2::Sha512::digest(&buf)[..32];
-        let signature = key.sign(&digest).to_bytes();
-
-        self.signature[..KEYPAIR_LENGTH].copy_from_slice(&signature);
-        self.signature[KEYPAIR_LENGTH..].copy_from_slice(&digest);
-        self.signer = signer;
-    }
-
     pub fn serialize(&self) -> Fallible<Vec<u8>> {
         // In ZeroTier CertificateOfMembership is serialized like so:
         // -----------------------------
@@ -113,11 +96,40 @@ impl CertificateOfMembership {
         }
         Ok(out)
     }
+
+    pub fn sign(&mut self, identity: u64, signer: &dyn ZeroTierSigner) -> Fallible<()> {
+        let mut buf: Vec<u8> = Vec::new();
+        for q in &self.qualifiers {
+            buf.append(&mut u64::to_be_bytes(q.id).to_vec());
+            buf.append(&mut u64::to_be_bytes(q.value).to_vec());
+            buf.append(&mut u64::to_be_bytes(q.max_delta).to_vec());
+        }
+
+        self.signature.copy_from_slice(&signer.sign(&buf)?);
+        self.signer = identity;
+
+        Ok(())
+    }
 }
 
 #[cfg(test)]
 pub mod tests {
     use super::*;
+    use sha2::Digest;
+    use ed25519_dalek::{Keypair, Signer, KEYPAIR_LENGTH};
+
+    struct TestSigner(ed25519_dalek::Keypair);
+
+    impl ZeroTierSigner for TestSigner {
+        fn sign(&self, data: &[u8]) -> Fallible<[u8; 96]> {
+            let mut signature = [0u8; 96];
+            let digest = &sha2::Sha512::digest(data)[..32];
+            let signed = self.0.sign(&digest).to_bytes();
+            signature[..KEYPAIR_LENGTH].copy_from_slice(&signed);
+            signature[KEYPAIR_LENGTH..].copy_from_slice(digest);
+            Ok(signature)
+        }
+    }
 
     #[test]
     fn test_certificate_of_membership() -> Fallible<()> {
@@ -135,9 +147,9 @@ pub mod tests {
         let expect = "010007000000000000000000000180418d5158000000000001e2400000000000000001001234567865432100000000000000000000000000000002000000894f8955a6ffffffffffffffff0000000000000003c479b54bc47ea678ffffffffffffffff000000000000000432998ed6255eadf2ffffffffffffffff00000000000000053a43d68294a4bdffffffffffffffffff0000000000000006566323366e1bc33effffffffffffffffaabbccddeebce1c9e0120816faf3ac10b0eef4048614bec556ef5ed0deb7bc513ec5fdff7a6f89a6e0aeb50340defae92cf16595929ffed35a7b4d5fe4fd11d494afb5a30e662ab1c84a83f53211b6f0ccf764017b871670eea12e07a1d7888c9e60c29b8e";
 
         let keypair_hex = "6b7ec6bebb42159e30f8fe843c1e2928372a8787a098d39f41568282a0c89637f82dc186e19f50b01e7fa93637683919de6e4be7df1a3404a9f21ba16d273f94";
-        let keypair: Keypair = Keypair::from_bytes(&hex::decode(keypair_hex)?)?;
+        let signer = TestSigner(Keypair::from_bytes(&hex::decode(keypair_hex)?)?);
 
-        com.sign(0xaabbccddee, &keypair);
+        com.sign(0xaabbccddee, &signer)?;
 
         assert_eq!(com.serialize()?, hex::decode(expect)?);
 
