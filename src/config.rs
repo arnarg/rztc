@@ -96,11 +96,9 @@ impl Member {
     /// TODO: Check for broadcast IP.
     pub fn try_into_zt_member(self, network: &Ipv4Network) -> Fallible<zt::controller::Member> {
         let address: u64 = {
-            let mut bytes = hex::decode(self.address)?;
-            while bytes.len() < 8 {
-                bytes.insert(0, 0);
-            }
-            u64::from_be_bytes(bytes[..8].try_into()?)
+            let mut bytes = [0u8; 8];
+            hex::decode_to_slice(self.address, &mut bytes[3..])?;
+            u64::from_be_bytes(bytes)
         };
 
         let ip = match self.ip {
