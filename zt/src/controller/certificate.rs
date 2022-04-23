@@ -1,6 +1,6 @@
 use crate::controller::identity::Identity;
 use serde::{Serialize, Deserialize};
-use ed25519_dalek::{Keypair, Signer};
+use ed25519_dalek::{Keypair, Signer, KEYPAIR_LENGTH};
 use sha2::Digest;
 use failure::Fallible;
 
@@ -74,11 +74,11 @@ impl CertificateOfMembership {
             buf.append(&mut u64::to_be_bytes(q.max_delta).to_vec());
         }
 
-        let digest = sha2::Sha512::digest(&buf);
-        let signature = key.sign(&buf[..32]).to_bytes();
+        let digest: &[u8] = &sha2::Sha512::digest(&buf)[..32];
+        let signature = key.sign(&digest).to_bytes();
 
-        self.signature[..32].copy_from_slice(&digest[..32]);
-        self.signature[32..].copy_from_slice(&signature);
+        self.signature[..KEYPAIR_LENGTH].copy_from_slice(&signature);
+        self.signature[KEYPAIR_LENGTH..].copy_from_slice(&digest);
         self.signer = signer;
     }
 
@@ -131,8 +131,8 @@ pub mod tests {
             },
         );
 
-        // TODO: verify signing data is correct
-        let expect = "010007000000000000000000000180418d5158000000000001e2400000000000000001001234567865432100000000000000000000000000000002000000894f8955a6ffffffffffffffff0000000000000003c479b54bc47ea678ffffffffffffffff000000000000000432998ed6255eadf2ffffffffffffffff00000000000000053a43d68294a4bdffffffffffffffffff0000000000000006566323366e1bc33effffffffffffffffaabbccddee662ab1c84a83f53211b6f0ccf764017b871670eea12e07a1d7888c9e60c29b8e29ae3d4a215684c7facf4cf614d9178eb5cf6b0c6a718dabc50aa728b4249c89c48b7048bfde6bf238a4e711af0362fdd44fdeb3de047359782c8959b8d36806";
+
+        let expect = "010007000000000000000000000180418d5158000000000001e2400000000000000001001234567865432100000000000000000000000000000002000000894f8955a6ffffffffffffffff0000000000000003c479b54bc47ea678ffffffffffffffff000000000000000432998ed6255eadf2ffffffffffffffff00000000000000053a43d68294a4bdffffffffffffffffff0000000000000006566323366e1bc33effffffffffffffffaabbccddeebce1c9e0120816faf3ac10b0eef4048614bec556ef5ed0deb7bc513ec5fdff7a6f89a6e0aeb50340defae92cf16595929ffed35a7b4d5fe4fd11d494afb5a30e662ab1c84a83f53211b6f0ccf764017b871670eea12e07a1d7888c9e60c29b8e";
 
         let keypair_hex = "6b7ec6bebb42159e30f8fe843c1e2928372a8787a098d39f41568282a0c89637f82dc186e19f50b01e7fa93637683919de6e4be7df1a3404a9f21ba16d273f94";
         let keypair: Keypair = Keypair::from_bytes(&hex::decode(keypair_hex)?)?;
