@@ -6,6 +6,7 @@ extern crate num_derive;
 extern crate sha2;
 extern crate bincode;
 extern crate serde;
+extern crate ipnetwork;
 
 pub mod core;
 pub mod controller;

@@ -18,7 +18,7 @@ use failure::Fallible;
 use std::collections::VecDeque;
 use sha2::Digest;
 use ed25519_dalek::{Keypair, Signer, KEYPAIR_LENGTH};
-use std::net::Ipv4Addr;
+use ipnetwork::Ipv4Network;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 #[derive(Debug, Clone)]
@@ -45,7 +45,7 @@ pub struct Network {
 #[derive(Debug, Clone)]
 pub struct Member {
     pub address: u64,
-    pub ip: Ipv4Addr,
+    pub ip: Ipv4Network,
 }
 
 impl Network {
@@ -53,7 +53,7 @@ impl Network {
         // This little guy will be used to give the user the IP address once CertificateOfOwnership
         // is implemented.
         // TODO!
-        let _member = match self.members.iter().find(|m| m.address == identity.address) {
+        let member = match self.members.iter().find(|m| m.address == identity.address) {
             Some(m) => m,
             None => return Err(NetworkError::NotFound.into()),
         };
@@ -75,6 +75,7 @@ impl Network {
             trace_level: TraceLevel::Normal as u64,
             flags: if self.broadcast { 2 } else { 0 },
             mtu: self.mtu as u64,
+            static_ip: Some(member.ip),
             com: CertificateOfMembership::new(
                 now as u64,
                 7200000,

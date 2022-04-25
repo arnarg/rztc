@@ -115,7 +115,7 @@ impl Member {
 
         Ok(zt::controller::Member {
             address: address,
-            ip: ip,
+            ip: Ipv4Network::new(ip, network.prefix())?,
         })
     }
 }
@@ -173,7 +173,7 @@ pub mod tests {
         let zt_member = member.try_into_zt_member(&network)?;
 
         assert_eq!(zt_member.address, 0xaabbccddee);
-        assert_eq!(zt_member.ip, std::net::Ipv4Addr::new(100, 100, 13, 238));
+        assert_eq!(zt_member.ip, ipnetwork::Ipv4Network::new(std::net::Ipv4Addr::new(100, 100, 13, 238), 20)?);
 
         Ok(())
     }
@@ -190,7 +190,7 @@ pub mod tests {
         let zt_member = member.try_into_zt_member(&network)?;
 
         assert_eq!(zt_member.address, 0xaabbccddee);
-        assert_eq!(zt_member.ip, std::net::Ipv4Addr::new(100, 100, 0, 10));
+        assert_eq!(zt_member.ip, ipnetwork::Ipv4Network::new(std::net::Ipv4Addr::new(100, 100, 0, 10), 24)?);
 
         Ok(())
     }

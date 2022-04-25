@@ -5,6 +5,7 @@ use crate::controller::identity::Identity;
 use crate::controller::certificate::CertificateOfMembership;
 use crate::dictionary::Dictionary;
 use std::time::{SystemTime, UNIX_EPOCH};
+use ipnetwork::Ipv4Network;
 use failure::Fallible;
 
 const NETWORKCONFIG_VERSION: u64 = 7;
@@ -73,6 +74,7 @@ pub struct NetworkConfig {
     pub(crate) trace_level: u64,
     pub(crate) flags: u64,
     pub(crate) mtu: u64,
+    pub(crate) static_ip: Option<Ipv4Network>,
     pub(crate) com: CertificateOfMembership,
 }
 
@@ -93,6 +95,7 @@ impl NetworkConfig {
             issued_to: issued_to.address,
             trace_target: 0,
             trace_level: TraceLevel::Normal as u64,
+            static_ip: None,
             com: CertificateOfMembership::new(
                 now as u64,
                 NETWORKCONFIG_DEFAULT_CREDENTIAL_TIME_MAX_DELTA,
@@ -119,6 +122,17 @@ impl NetworkConfig {
         dict.set_str(DICT_KEY_NAME, &self.name);
         dict.set_u64(DICT_KEY_MTU, self.mtu);
         dict.set_bytes(DICT_KEY_COM, &self.com.serialize()?);
+
+        // TODO: Do this properly and not in this function
+        if let Some(static_ip) = self.static_ip {
+            let mut data: Vec<u8> = Vec::new();
+            data.push(4);
+            data.append(&mut static_ip.ip().octets().to_vec());
+            // TODO: needs to be u16 big endian
+            data.push(0);
+            data.push(static_ip.prefix());
+            dict.set_bytes(DICT_KEY_STATIC_IPS, &data);
+        }
 
         // Temporary hardcoded until implemented
         dict.set_bytes(DICT_KEY_RULES, &[1, 0]); // accept all
