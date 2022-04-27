@@ -14,7 +14,7 @@ use crate::dictionary::Dictionary;
 use crate::controller::identity::Identity;
 use crate::controller::membership::CertificateOfMembership;
 use crate::controller::ownership::CertificateOfOwnership;
-use crate::controller::networkconfig::{NetworkConfig, NetworkType, TraceLevel};
+use crate::controller::networkconfig::{NetworkConfig, NetworkType, TraceLevel, Route};
 use num_traits::FromPrimitive;
 use failure::Fallible;
 use std::collections::VecDeque;
@@ -88,6 +88,15 @@ impl Network {
             mtu: self.mtu as u64,
             network: self.network,
             static_ip: Some(member.ip),
+            // We need to have a default route
+            routes: vec![
+                Route {
+                    dest: self.network.clone(),
+                    via: None,
+                    flags: 0,
+                    metric: 0,
+                }
+            ],
             com: CertificateOfMembership::new(
                 now as u64,
                 7200000,

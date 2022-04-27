@@ -8,7 +8,7 @@ enum ThingType {
     Ipv6Address = 3,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct CertificateOfOwnership {
     nwid: u64,
     timestamp: u64,

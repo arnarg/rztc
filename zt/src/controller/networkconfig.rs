@@ -61,7 +61,15 @@ pub enum TraceLevel {
     Insane = 30, // That is what they call it in the ZeroTierOne source code :)
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
+pub struct Route {
+    pub(crate) dest: Ipv4Network,
+    pub(crate) via: Option<std::net::Ipv4Addr>,
+    pub(crate) flags: u16,
+    pub(crate) metric: u16,
+}
+
+#[derive(Debug, Clone)]
 pub struct NetworkConfig {
     pub(crate) name: String,
     pub(crate) nwid: u64,
@@ -77,6 +85,7 @@ pub struct NetworkConfig {
     pub(crate) mtu: u64,
     pub(crate) network: Ipv4Network,
     pub(crate) static_ip: Option<Ipv4Network>,
+    pub(crate) routes: Vec<Route>,
     pub(crate) com: CertificateOfMembership,
     pub(crate) coo: CertificateOfOwnership,
 }
@@ -100,6 +109,14 @@ impl NetworkConfig {
             trace_level: TraceLevel::Normal as u64,
             network: network,
             static_ip: None,
+            routes: vec![
+                Route {
+                    dest: network.clone(),
+                    via: None,
+                    flags: 0,
+                    metric: 0,
+                }
+            ],
             com: CertificateOfMembership::new(
                 now as u64,
                 NETWORKCONFIG_DEFAULT_CREDENTIAL_TIME_MAX_DELTA,
@@ -134,33 +151,40 @@ impl NetworkConfig {
         dict.set_bytes(DICT_KEY_COM, &self.com.serialize()?);
         dict.set_bytes(DICT_KEY_CERTIFICATES_OF_OWNERSHIP, &self.coo.serialize(true)?);
 
-        // TODO: Do this properly and not in this function
+        // Member's IP
         if let Some(static_ip) = self.static_ip {
             let mut data: Vec<u8> = Vec::new();
             data.push(4);
             data.append(&mut static_ip.ip().octets().to_vec());
-            // TODO: needs to be u16 big endian
-            data.push(0);
-            data.push(static_ip.prefix());
+            data.append(&mut u16::to_be_bytes(static_ip.prefix().into()).to_vec());
             dict.set_bytes(DICT_KEY_STATIC_IPS, &data);
         }
 
-        // Route
-        // TODO: not hardcoded
-        {
-            // target
+        // Routes
+        for route in &self.routes {
             let mut data: Vec<u8> = Vec::new();
+            // We only have ipv4 implemented yet
             data.push(4);
-            data.append(&mut self.network.ip().octets().to_vec());
-            data.push(0);
-            data.push(self.network.prefix());
-            // via
-            data.push(0);
-            // flags
-            data.append(&mut u16::to_be_bytes(0).to_vec());
-            // metric
-            data.append(&mut u16::to_be_bytes(0).to_vec());
-
+            // Push destination address
+            data.append(&mut route.dest.ip().octets().to_vec());
+            // Push destination prefix
+            data.append(&mut u16::to_be_bytes(route.dest.prefix().into()).to_vec());
+            // Via address
+            match route.via {
+                Some(via) => {
+                    // We only have ipv4 implemented yet
+                    data.push(4);
+                    // Push via address
+                    data.append(&mut via.octets().to_vec());
+                    // Push via prefix
+                    data.append(&mut u16::to_be_bytes(32).to_vec()); // 32?
+                },
+                None => data.push(0),
+            }
+            // Flags
+            data.append(&mut u16::to_be_bytes(route.flags).to_vec());
+            // Metric
+            data.append(&mut u16::to_be_bytes(route.metric).to_vec());
             dict.set_bytes(DICT_KEY_ROUTES, &data);
         }
 
@@ -180,6 +204,7 @@ impl NetworkConfig {
         Ok(())
     }
 }
+
 
 #[cfg(test)]
 pub mod tests {

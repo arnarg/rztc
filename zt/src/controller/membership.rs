@@ -10,14 +10,14 @@ enum QualifierId {
     IssuedTo = 2,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 struct Qualifier {
     id: u64,
     value: u64,
     max_delta: u64,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct CertificateOfMembership {
     qualifiers: Vec<Qualifier>,
     signer: u64,
