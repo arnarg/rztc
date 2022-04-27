@@ -3,7 +3,8 @@
 mod callback;
 mod error;
 mod identity;
-mod certificate;
+mod membership;
+mod ownership;
 mod networkconfig;
 
 use callback::*;
@@ -11,7 +12,8 @@ use error::*;
 use zt_sys::controller::*;
 use crate::dictionary::Dictionary;
 use crate::controller::identity::Identity;
-use crate::controller::certificate::CertificateOfMembership;
+use crate::controller::membership::CertificateOfMembership;
+use crate::controller::ownership::CertificateOfOwnership;
 use crate::controller::networkconfig::{NetworkConfig, NetworkType, TraceLevel};
 use num_traits::FromPrimitive;
 use failure::Fallible;
@@ -33,7 +35,7 @@ pub struct NetworkRequest {
 pub struct Network {
     pub name: String,
     pub id: u32,
-    pub prefix: u8,
+    pub network: Ipv4Network,
     pub revision: u64,
     pub public: bool,
     pub broadcast: bool,
@@ -62,6 +64,15 @@ impl Network {
         let now: i64 = now.as_millis().try_into()?;
 
         let nwid = (controller << 24) | self.id as u64;
+
+        let mut coo = CertificateOfOwnership::new(
+            now as u64,
+            nwid,
+            identity,
+            1
+        );
+        coo.add_ip(&std::net::IpAddr::V4(member.ip.ip()));
+
         Ok(NetworkConfig {
             name: self.name.clone(),
             nwid: nwid,
@@ -75,6 +86,7 @@ impl Network {
             trace_level: TraceLevel::Normal as u64,
             flags: if self.broadcast { 2 } else { 0 },
             mtu: self.mtu as u64,
+            network: self.network,
             static_ip: Some(member.ip),
             com: CertificateOfMembership::new(
                 now as u64,
@@ -82,6 +94,7 @@ impl Network {
                 nwid,
                 identity,
             ),
+            coo: coo,
         })
     }
 }
@@ -121,6 +134,8 @@ impl Controller {
             Ok(nc) => nc,
             Err(error) => {
                 println!("got error trying to find network: {}", error);
+                // Always send NotFound
+                self.send_error(req, NetworkError::NotFound);
                 return;
             },
         };
@@ -149,6 +164,22 @@ impl Controller {
                 req.identity.address,
                 nc.serialize()?.as_ptr() as *const _,
                 false
+            );
+        }
+
+        Ok(())
+    }
+
+    fn send_error(&self, req: &NetworkRequest, ne: NetworkError) -> Fallible<()> {
+        unsafe {
+            RZTC_Controller_sendError(
+                self.rztc_controller,
+                req.nwid,
+                req.packet_id,
+                req.identity.address,
+                ne as u32,
+                std::ptr::null(),
+                0
             );
         }
 

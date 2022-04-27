@@ -146,7 +146,7 @@ impl TryInto<zt::controller::Network> for Network {
         Ok(zt::controller::Network {
             name: self.name,
             id: id,
-            prefix: network.prefix(),
+            network: network,
             revision: self.revision,
             public: self.public,
             broadcast: self.broadcast,

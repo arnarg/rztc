@@ -2,7 +2,8 @@
 
 use crate::controller::ZeroTierSigner;
 use crate::controller::identity::Identity;
-use crate::controller::certificate::CertificateOfMembership;
+use crate::controller::membership::CertificateOfMembership;
+use crate::controller::ownership::CertificateOfOwnership;
 use crate::dictionary::Dictionary;
 use std::time::{SystemTime, UNIX_EPOCH};
 use ipnetwork::Ipv4Network;
@@ -74,12 +75,14 @@ pub struct NetworkConfig {
     pub(crate) trace_level: u64,
     pub(crate) flags: u64,
     pub(crate) mtu: u64,
+    pub(crate) network: Ipv4Network,
     pub(crate) static_ip: Option<Ipv4Network>,
     pub(crate) com: CertificateOfMembership,
+    pub(crate) coo: CertificateOfOwnership,
 }
 
 impl NetworkConfig {
-    pub fn new(name: &str, nwid: u64, issued_to: &Identity, rev: u64) -> Fallible<Self> {
+    pub fn new(name: &str, nwid: u64, issued_to: &Identity, network: Ipv4Network, rev: u64) -> Fallible<Self> {
         let now = SystemTime::now().duration_since(UNIX_EPOCH)?;
         let now: i64 = now.as_millis().try_into()?;
         Ok(Self {
@@ -95,12 +98,19 @@ impl NetworkConfig {
             issued_to: issued_to.address,
             trace_target: 0,
             trace_level: TraceLevel::Normal as u64,
+            network: network,
             static_ip: None,
             com: CertificateOfMembership::new(
                 now as u64,
                 NETWORKCONFIG_DEFAULT_CREDENTIAL_TIME_MAX_DELTA,
                 nwid,
                 &issued_to,
+            ),
+            coo: CertificateOfOwnership::new(
+                now as u64,
+                nwid,
+                &issued_to,
+                1
             ),
         })
     }
@@ -122,6 +132,7 @@ impl NetworkConfig {
         dict.set_str(DICT_KEY_NAME, &self.name);
         dict.set_u64(DICT_KEY_MTU, self.mtu);
         dict.set_bytes(DICT_KEY_COM, &self.com.serialize()?);
+        dict.set_bytes(DICT_KEY_CERTIFICATES_OF_OWNERSHIP, &self.coo.serialize(true)?);
 
         // TODO: Do this properly and not in this function
         if let Some(static_ip) = self.static_ip {
@@ -134,8 +145,27 @@ impl NetworkConfig {
             dict.set_bytes(DICT_KEY_STATIC_IPS, &data);
         }
 
+        // Route
+        // TODO: not hardcoded
+        {
+            // target
+            let mut data: Vec<u8> = Vec::new();
+            data.push(4);
+            data.append(&mut self.network.ip().octets().to_vec());
+            data.push(0);
+            data.push(self.network.prefix());
+            // via
+            data.push(0);
+            // flags
+            data.append(&mut u16::to_be_bytes(0).to_vec());
+            // metric
+            data.append(&mut u16::to_be_bytes(0).to_vec());
+
+            dict.set_bytes(DICT_KEY_ROUTES, &data);
+        }
+
         // Temporary hardcoded until implemented
-        dict.set_bytes(DICT_KEY_RULES, &[1, 0]); // accept all
+        dict.set_bytes(DICT_KEY_RULES, &[1u8, 0u8]); // accept all
         dict.set_u64(DICT_KEY_SSO_VERSION, 0);
         dict.set_bool(DICT_KEY_SSO_ENABLED, false);
         dict.set_bytes(DICT_KEY_DNS, &[0u8; 132]);
@@ -145,6 +175,7 @@ impl NetworkConfig {
 
     pub fn sign(&mut self, identity: u64, signer: &dyn ZeroTierSigner) -> Fallible<()> {
         self.com.sign(identity, signer)?;
+        self.coo.sign(identity, signer)?;
 
         Ok(())
     }

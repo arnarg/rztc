@@ -127,6 +127,8 @@ pub extern "C" fn event_callback(
     let n: &Node = to_node!(node);
     if let Some(ev) = Event::from_u32(event_type) {
         n.on_event(ev);
+    } else {
+        println!("Uncaught event: {}", event_type);
     }
 }
 
@@ -140,7 +142,16 @@ pub extern "C" fn virtual_network_config_function(
     _user: *mut *mut c_void,
     _op: ZT_VirtualNetworkConfigOperation,
     _config: *const ZT_VirtualNetworkConfig
-) -> c_int {0}
+) -> c_int {
+    unsafe{
+        println!("nwid: {:x}", _nwid);
+        println!("routeCount: {}", (*_config).routeCount);
+        println!("assignedAddressCount: {}", (*_config).assignedAddressCount);
+        println!("multicastSubscriptionCount: {}", (*_config).multicastSubscriptionCount);
+    }
+
+    0
+}
 
 // TODO: implement
 #[no_mangle]
@@ -156,7 +167,14 @@ pub extern "C" fn virtual_network_frame_function(
     _vlan_id: c_uint,
     _data: *const c_void,
     _len: c_uint
-) {}
+) {
+    println!("nwid:   {:x}", _nwid);
+    println!("source: {:x}", _source);
+    println!("dest:   {:x}", _destination);
+    println!("vlan:   {:x}", _vlan_id);
+    let buf = unsafe{ std::slice::from_raw_parts(_data as *const u8, _len as usize) };
+    println!("{}", hex::encode(buf));
+}
 
 // TODO: implement
 #[no_mangle]
