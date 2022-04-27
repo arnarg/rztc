@@ -79,7 +79,7 @@ impl Network {
             timestamp: now,
             credential_time_max_delta: 7200000,
             rev: self.revision,
-            multicast_limit: 0,
+            multicast_limit: 32,
             network_type: if self.public { NetworkType::Public as u64 } else { NetworkType::Private as u64 },
             issued_to: identity.address,
             trace_target: 0,

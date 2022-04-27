@@ -91,7 +91,7 @@ impl NetworkConfig {
             timestamp: now,
             credential_time_max_delta: NETWORKCONFIG_DEFAULT_CREDENTIAL_TIME_MAX_DELTA,
             network_type: NetworkType::Private as u64,
-            multicast_limit: 0,
+            multicast_limit: 32,
             rev: rev,
             mtu: 2800,
             flags: 0,
