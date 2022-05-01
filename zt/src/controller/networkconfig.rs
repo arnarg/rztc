@@ -217,7 +217,7 @@ pub mod tests {
             address: 589744919974,
             public: hex::decode("2ca7d749ec20a750b6189cf1f51a5f7db67bbed6218cbae506946c01e267cd05d6e4bd580af21231b7edd03eb04a086a43a14cfca67b19a1cc4484e5ad142034")?.try_into().unwrap(),
         };
-        let nc = NetworkConfig::new("test-network0", 0x12345678654321, &id, 1)?;
+        let nc = NetworkConfig::new("test-network0", 0x12345678654321, &id, Ipv4Network::new(std::net::Ipv4Addr::new(100, 100, 0, 0), 24)?, 1)?;
 
         unsafe {
             println!("{}", std::str::from_utf8_unchecked(&nc.serialize()?));

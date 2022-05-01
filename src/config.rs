@@ -1,8 +1,10 @@
 use serde::{Serialize, Deserialize};
 use std::str::FromStr;
+use std::collections::BTreeMap;
 use ipnetwork::Ipv4Network;
 use failure::Fallible;
 use sha2::Digest;
+use zt::controller::rule::{Rule as ZTRule};
 
 #[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
 pub struct Config {
@@ -35,7 +37,7 @@ pub struct Network {
     mtu: u16,
     dns: Option<DNS>,
     members: Vec<Member>,
-    rules: Option<Vec<Rule>>,
+    rules: Option<Vec<BTreeMap<String, String>>>,
 }
 
 fn default_revision() -> u64 { 0 }
@@ -60,22 +62,6 @@ struct DNS {
 struct Member {
     address: String,
     ip: Option<String>,
-}
-
-#[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
-struct Rule {
-    #[serde(rename(deserialize = "type"))]
-    rtype: String,
-    #[serde(default = "default_not_or")]
-    not: bool,
-    #[serde(default = "default_not_or")]
-    or: bool,
-    #[serde(default)]
-    ether_type: String,
-}
-
-fn default_not_or() -> bool {
-    false
 }
 
 impl Member {

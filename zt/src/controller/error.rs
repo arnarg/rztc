@@ -28,3 +28,9 @@ pub enum SignatureError {
     #[fail(display = "signer has no keypair")]
     NoKeypair,
 }
+
+#[derive(Debug, Fail, FromPrimitive)]
+pub enum ParseError {
+    #[fail(display = "unable to find match")]
+    NotFound,
+}
