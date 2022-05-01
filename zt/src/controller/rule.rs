@@ -41,93 +41,32 @@ impl FromStr for ActionType {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct SimpleAction(ActionType);
-impl SimpleAction {
-    pub fn new(action_type: ActionType) -> Fallible<Self> {
-        let t = match action_type {
-            ActionType::Accept |
-            ActionType::Drop |
-            ActionType::Break => action_type,
-            _                 => return Err(ParseError::NotFound.into()),
-        };
-
-        Ok(Self(t))
-    }
-
-    fn serialize(&self) -> Fallible<Vec<u8>> {
-        let mut buf = Vec::new();
-        buf.push(self.0 as u8);
-        buf.push(0);
-        Ok(buf)
-    }
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct ComplexAction {
+pub struct RuleAction {
     type_id: ActionType,
-    address: u64,
-    flags: u32,
-    length: u16,
+    address: Option<u64>,
+    flags: Option<u32>,
+    length: Option<u16>,
 }
-impl ComplexAction {
-    pub fn new(data: &BTreeMap<String, String>) -> Fallible<Self> {
-        let type_id = match data.get("type") {
-            Some(id) => ActionType::from_str(id)?,
-            None     => return Err(ParseError::NotFound.into()),
-        };
 
-        let address = match data.get("address") {
-            Some(address) => {
-                let mut buf = [0u8; 8];
-                buf[3..].copy_from_slice(&hex::decode(address)?[..]);
-                u64::from_be_bytes(buf)
-            },
-            None => return Err(ParseError::NotFound.into()),
-        };
-
-        let flags = match data.get("flags") {
-            Some(flags) => u32::from_str(flags)?,
-            None        => 0,
-        };
-
-        let length = match data.get("length") {
-            Some(length) => u16::from_str(length)?,
-            None         => {
-                // Not used for redirect
-                if type_id != ActionType::Redirect {
-                    return Err(ParseError::NotFound.into());
-                }
-                0
-            }
-        };
-
-        Ok(Self {
-            type_id: type_id,
-            address: address,
-            flags: flags,
-            length: length,
-        })
-    }
-
+impl RuleAction {
     fn serialize(&self) -> Fallible<Vec<u8>> {
         let mut buf = Vec::new();
         buf.push(self.type_id as u8);
-        buf.push(14); // 64+32+16/8 = 14
-        buf.append(&mut u64::to_be_bytes(self.address).to_vec());
-        buf.append(&mut u32::to_be_bytes(self.flags).to_vec());
-        buf.append(&mut u16::to_be_bytes(self.length).to_vec());
+        match self.type_id {
+            ActionType::Tee |
+            ActionType::Watch |
+            ActionType::Redirect => {
+                buf.push(14); // 64+32+16/8 = 14
+                buf.append(&mut u64::to_be_bytes(self.address.ok_or(ParseError::NotFound)?).to_vec());
+                buf.append(&mut u32::to_be_bytes(self.flags.unwrap_or(0)).to_vec());
+                buf.append(&mut u16::to_be_bytes(self.length.unwrap_or(0)).to_vec());
+            },
+            _ => {
+                buf.push(0);
+            },
+        };
         Ok(buf)
     }
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum RuleAction {
-    Accept(SimpleAction),
-    Drop(SimpleAction),
-    Break(SimpleAction),
-    Tee(ComplexAction),
-    Redirect(ComplexAction),
-    Watch(ComplexAction),
 }
 
 impl TryFrom<BTreeMap<String, String>> for RuleAction {
@@ -139,15 +78,48 @@ impl TryFrom<BTreeMap<String, String>> for RuleAction {
             None     => return Err(ParseError::NotFound.into()),
         };
 
-        match ActionType::from_str(type_id) {
-            Ok(ActionType::Accept)   => Ok(Self::Accept(SimpleAction::new(ActionType::Accept)?)),
-            Ok(ActionType::Drop)     => Ok(Self::Drop(SimpleAction::new(ActionType::Drop)?)),
-            Ok(ActionType::Break)    => Ok(Self::Break(SimpleAction::new(ActionType::Break)?)),
-            Ok(ActionType::Tee)      => Ok(Self::Tee(ComplexAction::new(&data)?)),
-            Ok(ActionType::Redirect) => Ok(Self::Redirect(ComplexAction::new(&data)?)),
-            Ok(ActionType::Watch)    => Ok(Self::Watch(ComplexAction::new(&data)?)),
-            Err(_)                   => Err(ParseError::NotFound.into())
-        }
+        let action_type = match ActionType::from_str(type_id) {
+            Ok(type_id) => type_id,
+            Err(_)      => return Err(ParseError::NotFound.into())
+        };
+
+        let (address, flags, length) = match action_type {
+            ActionType::Tee |
+            ActionType::Watch |
+            ActionType::Redirect => {
+                let address = match data.get("address") {
+                    Some(address) => {
+                        let mut buf = [0u8; 8];
+                        buf[3..].copy_from_slice(&hex::decode(address)?[..]);
+                        u64::from_be_bytes(buf)
+                    },
+                    None => return Err(ParseError::NotFound.into()),
+                };
+                let flags = match data.get("flags") {
+                    Some(flags) => u32::from_str(flags)?,
+                    None        => 0,
+                };
+                let length = match data.get("length") {
+                    Some(length) => u16::from_str(length)?,
+                    None         => {
+                        // Not used for redirect
+                        if action_type != ActionType::Redirect {
+                            return Err(ParseError::NotFound.into());
+                        }
+                        0
+                    }
+                };
+                (Some(address), Some(flags), Some(length))
+            },
+            _ => (None, None, None),
+        };
+
+        Ok(Self {
+            type_id: action_type,
+            address: address,
+            flags: flags,
+            length: length,
+        })
     }
 }
 
@@ -450,9 +422,9 @@ pub mod tests {
 
     #[test]
     fn test_serialize_simple_action() -> Fallible<()> {
-        assert_eq!(SimpleAction::new(ActionType::Drop)?.serialize()?, vec![0, 0]);
-        assert_eq!(SimpleAction::new(ActionType::Accept)?.serialize()?, vec![1, 0]);
-        assert_eq!(SimpleAction::new(ActionType::Break)?.serialize()?, vec![5, 0]);
+        assert_eq!(RuleAction{type_id: ActionType::Drop, address: None, flags: None, length: None}.serialize()?, vec![0, 0]);
+        assert_eq!(RuleAction{type_id: ActionType::Accept, address: None, flags: None, length: None}.serialize()?, vec![1, 0]);
+        assert_eq!(RuleAction{type_id: ActionType::Break, address: None, flags: None, length: None}.serialize()?, vec![5, 0]);
 
         Ok(())
     }
@@ -466,7 +438,7 @@ pub mod tests {
         map.insert(String::from("address"), String::from("aabbccddee"));
         map.insert(String::from("flags"), String::from("0"));
         map.insert(String::from("length"), String::from("20"));
-        assert_eq!(ComplexAction::new(&map)?.serialize()?, vec![2, 14, 0, 0, 0, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0, 0, 0, 0, 0, 20]);
+        assert_eq!(RuleAction::try_from(map.clone())?.serialize()?, vec![2, 14, 0, 0, 0, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0, 0, 0, 0, 0, 20]);
 
         map.clear();
 
@@ -475,7 +447,7 @@ pub mod tests {
         map.insert(String::from("address"), String::from("aabbccddee"));
         map.insert(String::from("flags"), String::from("0"));
         map.insert(String::from("length"), String::from("20"));
-        assert_eq!(ComplexAction::new(&map)?.serialize()?, vec![3, 14, 0, 0, 0, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0, 0, 0, 0, 0, 20]);
+        assert_eq!(RuleAction::try_from(map.clone())?.serialize()?, vec![3, 14, 0, 0, 0, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0, 0, 0, 0, 0, 20]);
 
         map.clear();
 
@@ -483,7 +455,7 @@ pub mod tests {
         map.insert(String::from("type"), String::from("ACTION_REDIRECT"));
         map.insert(String::from("address"), String::from("aabbccddee"));
         map.insert(String::from("flags"), String::from("0"));
-        assert_eq!(ComplexAction::new(&map)?.serialize()?, vec![4, 14, 0, 0, 0, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0, 0, 0, 0, 0, 0]);
+        assert_eq!(RuleAction::try_from(map.clone())?.serialize()?, vec![4, 14, 0, 0, 0, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0, 0, 0, 0, 0, 0]);
 
         Ok(())
     }
@@ -586,7 +558,15 @@ pub mod tests {
         // ACTION_ACCEPT
         map.insert(String::from("type"), String::from("ACTION_ACCEPT"));
         let rule: Rule = map.clone().try_into()?;
-        assert_eq!(rule, Rule::Action(RuleAction::Accept(SimpleAction(ActionType::Accept))));
+        assert_eq!(rule, Rule::Action(
+                RuleAction {
+                    type_id: ActionType::Accept,
+                    address: None,
+                    flags: None,
+                    length: None,
+                }
+            )
+        );
 
         map.clear();
 
@@ -613,14 +593,12 @@ pub mod tests {
         map.insert(String::from("length"), String::from("20"));
         let rule: Rule = map.clone().try_into()?;
         assert_eq!(rule, Rule::Action(
-                RuleAction::Watch(
-                    ComplexAction {
-                        type_id: ActionType::Watch,
-                        address: 0xaabbccddee,
-                        flags: 0,
-                        length: 20,
-                    }
-                )
+                RuleAction {
+                    type_id: ActionType::Watch,
+                    address: Some(0xaabbccddee),
+                    flags: Some(0),
+                    length: Some(20),
+                }
             )
         );
 
